@@ -61,7 +61,7 @@ export interface TransformOptions {
   groupKeys: ColumnKey[]
   createEmptySheets: boolean
   singleControlSheetNaming: 'simple' | 'full'
-  /** 결과 행 순서: 시간순(원본 등장 순서) 또는 효과순(같은 효과끼리 → 시간순) */
+  /** 결과 행 순서: 제품명순(같은 효과끼리 → 시간순, 기본) 또는 시간순(원본 등장 순서) */
   rowOrder: 'time' | 'effect'
   /** 맨 앞에 원본(주소 매긴) 데이터 전체를 시트로 넣는다 */
   includeSourceSheet: boolean
@@ -72,7 +72,7 @@ export const DEFAULT_OPTIONS: TransformOptions = {
   groupKeys: ['HH', 'MM', 'SS', 'FF', 'EFFECT'],
   createEmptySheets: true,
   singleControlSheetNaming: 'simple',
-  rowOrder: 'time',
+  rowOrder: 'effect',
   includeSourceSheet: false
 }
 
@@ -118,6 +118,17 @@ export interface SheetCell {
   flag?: 'conflict' | 'missing'
 }
 
+/**
+ * 시트 안의 표 하나. SheetModel의 columns·rows 중 일부를 인덱스로 가리킨다.
+ * 연발·단발은 접두어(C/CF, S/GI/GO …)마다 표를 따로 만들어 위아래로 쌓는다 (혜원 2026-09-29)
+ */
+export interface SheetBlock {
+  /** 위치 접두어(S, GI …) 또는 미배치 POS */
+  label: string
+  columns: number[]
+  rows: number[]
+}
+
 export interface SheetModel {
   name: string
   control: string
@@ -130,6 +141,8 @@ export interface SheetModel {
   summary: string
   columns: string[]
   rows: SheetCell[][]
+  /** 있으면 Excel·미리보기는 이 표들을 위에서부터 쌓는다. 없으면 columns·rows 전체가 표 하나 */
+  blocks?: SheetBlock[]
   sourceRowCount: number
 }
 

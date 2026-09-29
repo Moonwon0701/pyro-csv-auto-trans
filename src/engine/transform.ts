@@ -15,6 +15,7 @@ import {
   type PrefixMapping,
   type Resolution,
   type RuleSet,
+  type SheetBlock,
   type SheetCell,
   type SheetModel,
   type TransformOptions,
@@ -360,14 +361,15 @@ export function transform(
    * 위치 열: 접두어끼리 묶는다. 기본 접두어(P/C/S) 먼저, 나머지는 이름순 (혜원 2026-09-29).
    * 예) C-01 … C-05, CF-01 … CF-05 … 접두어마다 1번부터 자기 최대 번호까지 빈 번호도 채운다
    */
-  function positionColumns(category: Category): string[] {
+  function positionColumns(category: Category): { prefix: string; columns: string[] }[] {
     const maxByPrefix = positionMax.get(category)
     if (!maxByPrefix) return []
     const main = CATEGORY_PREFIX[category]
     const prefixes = [...maxByPrefix.keys()].sort((a, b) => (a === main ? -1 : b === main ? 1 : naturalCompare(a, b)))
-    const columns: string[] = []
-    for (const p of prefixes) for (let n = 1; n <= maxByPrefix.get(p)!; n++) columns.push(formatPosition(p, n))
-    return columns
+    return prefixes.map((prefix) => ({
+      prefix,
+      columns: Array.from({ length: maxByPrefix.get(prefix)! }, (_, i) => formatPosition(prefix, i + 1))
+    }))
   }
   const baseFileName = csv.fileName.replace(/\.[^.]+$/, '')
   const groupKeyLabel = opts.groupKeys.map((k) => (cols.has(k) ? headerOf(k) : k)).join(' + ')
@@ -400,11 +402,16 @@ export function transform(
   function buildSheet(name: string, control: string, category: Category, bucket?: SheetBucket): SheetModel {
     const groups = bucket ? [...bucket.groups.values()] : []
     if (opts.rowOrder === 'effect') {
-      // 현장 정리 방식: 같은 효과(제품)끼리 모아서, 그 안에서는 시간순
-      const ef = (g: Group) => (g.key.EFFECT ?? '').toLowerCase()
-      groups.sort((a, b) => (ef(a) < ef(b) ? -1 : ef(a) > ef(b) ? 1 : 0) || a.order - b.order)
+      // 현장 정리 방식: 같은 효과(제품)끼리 모아서, 그 안에서는 시간순. 효과명이 빈 행은 맨 뒤
+      // (원본 CSV가 시간순이 아닐 수 있어서 등장 순서가 아니라 시각으로 비교)
+      const ef = (g: Group) => g.key.EFFECT ?? ''
+      const time = (g: Group) => TIME_KEYS.map((k) => g.key[k] ?? '').join(':')
+      groups.sort(
+        (a, b) => Number(!ef(a)) - Number(!ef(b)) || naturalCompare(ef(a), ef(b)) || naturalCompare(time(a), time(b)) || a.order - b.order
+      )
     }
-    const positions = positionColumns(category)
+    const positionGroups = positionColumns(category)
+    const positions = positionGroups.flatMap((p) => p.columns)
     const hasUnplaced = groups.some((g) => g.unplaced.length > 0)
 
     const lead: ColumnKey[] = (['HH', 'MM', 'SS', 'FF'] as ColumnKey[]).filter((k) => cols.has(k))
@@ -444,15 +451,33 @@ export function transform(
       return cells
     })
 
+    // 접두어마다 표 하나: 공통 열(CUE·시간·효과 …) + 그 접두어 위치 열 + NOTE, 그 접두어에 주소가 있는 행만
+    const infoCount = 1 + lead.length + before.length + effect.length + after.length
+    const common = Array.from({ length: infoCount }, (_, i) => i)
+    const noteIdx = columns.length - 1
+    const blocks: SheetBlock[] = []
+    let start = infoCount
+    for (const { prefix, columns: own } of positionGroups) {
+      const cols = [...common, ...own.map((_, i) => start + i), noteIdx]
+      const rowIdx = groups.flatMap((g, i) => (own.some((c) => g.positions.has(c)) ? [i] : []))
+      if (rowIdx.length) blocks.push({ label: prefix, columns: cols, rows: rowIdx })
+      start += own.length
+    }
+    if (hasUnplaced) {
+      const rowIdx = groups.flatMap((g, i) => (g.unplaced.length ? [i] : []))
+      blocks.push({ label: UNPLACED_COLUMN, columns: [...common, start, noteIdx], rows: rowIdx })
+    }
+
     const sourceRowCount = bucket?.rowCount ?? 0
     return {
       name,
       control,
       category,
       title: `${baseFileName} - ${name}`,
-      summary: `원본 ${sourceRowCount}행 → ${rows.length}개 그룹 | 병합 기준: ${groupKeyLabel} | 위치값: ${addressLabel} | ${category === '타상' ? 'POS 표준화: 타상 동일 끝번호끼리 통합' : 'POS: 원본 위치 그대로 (접두어별로 묶음)'}`,
+      summary: `원본 ${sourceRowCount}행 → ${rows.length}개 그룹 | 병합 기준: ${groupKeyLabel} | 위치값: ${addressLabel} | ${category === '타상' ? 'POS 표준화: 타상 동일 끝번호끼리 통합' : 'POS: 원본 위치 그대로 (접두어별 표를 위아래로)'}`,
       columns,
       rows,
+      blocks: blocks.length > 1 ? blocks : undefined,
       sourceRowCount
     }
   }

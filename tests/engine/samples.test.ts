@@ -1,7 +1,7 @@
 /**
  * samples/expected/<CSV 이름>.json (GPT/수작업 결과를 변환한 것)과 엔진 결과를 비교하는 회귀 테스트.
  * samples/는 git에 올리지 않으므로 파일이 없으면 건너뛴다.
- * <이름>.meta.json: { resolutions: 미등록 Prefix 분류, ordered: 행 순서까지 비교할지 }
+ * <이름>.meta.json: { resolutions: 미등록 Prefix 분류, ordered: 행 순서까지 비교할지, rowOrder?: 기본 'time' }
  */
 import { existsSync, readFileSync, readdirSync } from 'fs'
 import { describe, expect, it } from 'vitest'
@@ -30,7 +30,8 @@ describe.skipIf(cases.length === 0)('실제 샘플 회귀 테스트', () => {
       const metaPath = `${DIR}/${base}.meta.json`
       const meta = existsSync(metaPath) ? JSON.parse(readFileSync(metaPath, 'utf8')) : { resolutions: {}, ordered: true }
       const csv = parseCsv(readFileSync(`samples/${base}.csv`), `${base}.csv`)
-      const { analysis, sheets } = transform(csv, RULES, meta.resolutions, DEFAULT_OPTIONS)
+      // 기대 결과(GPT·수작업)는 시간순이라 meta에 따로 없으면 시간순으로 비교
+      const { analysis, sheets } = transform(csv, RULES, meta.resolutions, { ...DEFAULT_OPTIONS, rowOrder: meta.rowOrder ?? 'time' })
       expect(analysis.blocked).toBe(false)
       const hasAddress = analysis.addressSummary.dominant !== '없음'
 

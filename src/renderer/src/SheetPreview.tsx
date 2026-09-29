@@ -13,6 +13,15 @@ export default function SheetPreview({ sheets }: { sheets: SheetModel[] }) {
   if (!sheet) return <div className="preview empty-sheet">만들어질 시트가 없습니다.</div>
 
   const posCols = sheet.columns.map((c) => POS_COLUMN.test(c))
+  const blocks = sheet.blocks ?? [{ label: '', columns: sheet.columns.map((_, i) => i), rows: sheet.rows.map((_, i) => i) }]
+  // 미리보기는 모든 표를 합쳐 MAX_ROWS행까지만
+  let budget = MAX_ROWS
+  const shown = blocks.map((b) => {
+    const rows = b.rows.slice(0, Math.max(0, budget))
+    budget -= rows.length
+    return { ...b, rows }
+  })
+  const totalRows = blocks.reduce((n, b) => n + b.rows.length, 0)
   return (
     <div className="preview">
       <div className="sheet-tabs">
@@ -28,31 +37,37 @@ export default function SheetPreview({ sheets }: { sheets: SheetModel[] }) {
           <div className="empty-sheet">이 시트에는 데이터가 없습니다 (빈 시트로 생성됨)</div>
         ) : (
           <table className="xl">
-            <thead>
-              <tr>
-                {sheet.columns.map((c, i) => (
-                  <th key={i}>{c}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {sheet.rows.slice(0, MAX_ROWS).map((r, ri) => (
-                <tr key={ri}>
-                  {r.map((cell, ci) => (
-                    <td key={ci} className={[cell.flag ?? '', posCols[ci] ? 'pos' : ''].join(' ')}>
-                      {cell.value}
-                    </td>
+            {shown.map((b, bi) =>
+              b.rows.length === 0 ? null : (
+                <tbody key={bi} className={bi > 0 ? 'block-next' : ''}>
+                  <tr>
+                    {b.columns.map((c) => (
+                      <th key={c}>{sheet.columns[c]}</th>
+                    ))}
+                  </tr>
+                  {b.rows.map((r) => (
+                    <tr key={r}>
+                      {b.columns.map((c) => {
+                        const cell = sheet.rows[r][c]
+                        return (
+                          <td key={c} className={[cell.flag ?? '', posCols[c] ? 'pos' : ''].join(' ')}>
+                            {cell.value}
+                          </td>
+                        )
+                      })}
+                    </tr>
                   ))}
-                </tr>
-              ))}
-            </tbody>
+                </tbody>
+              )
+            )}
           </table>
         )}
       </div>
       <div className="preview-foot">
         <span>
-          원본 {sheet.sourceRowCount}행 → {sheet.rows.length}행
-          {sheet.rows.length > MAX_ROWS && ` (미리보기는 처음 ${MAX_ROWS}행)`}
+          원본 {sheet.sourceRowCount}행 → {sheet.rows.length}개 그룹
+          {blocks.length > 1 && ` · 표 ${blocks.length}개 (${blocks.map((b) => b.label).join(', ')})`}
+          {totalRows > MAX_ROWS && ` (미리보기는 처음 ${MAX_ROWS}행)`}
         </span>
         <span>
           <span className="swatch" style={{ background: 'var(--conflict)' }} />

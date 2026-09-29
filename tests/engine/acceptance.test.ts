@@ -95,6 +95,45 @@ describe('Spec 10. Acceptance Test', () => {
     expect([cell(c, 0, 'C-01'), cell(c, 0, 'CF-01')]).toEqual(['8F6', '958'])
   })
 
+  it('여수: 접두어별 표를 옆이 아니라 위아래로 쌓는다 (S 표 끝나고 GI 표)', async () => {
+    const { sheets } = run(
+      [
+        'FC-01,1,00,00,01,00,single_shot,S-01,D24,,,1,A',
+        'FC-01,2,00,00,02,00,single_shot,GI-02,AA2,,,1,B',
+        'FC-01,3,00,00,03,00,single_shot,S-02,D8A,,,1,C',
+        'FC-01,4,00,00,03,00,single_shot,GI-01,A91,,,1,C'
+      ],
+      {},
+      { GI: '단발' }
+    )
+    const s = sheet(sheets, '단발')
+    const view = (i: number) => ({
+      label: s.blocks![i].label,
+      columns: s.blocks![i].columns.map((c) => s.columns[c]),
+      rows: s.blocks![i].rows.map((r) => s.rows[r][0].value)
+    })
+    expect(s.blocks).toHaveLength(2)
+    expect(view(0)).toEqual({ label: 'S', columns: ['CUE', 'HH', 'MM', 'SS', 'FF', 'QTY', 'Effect Description', 'S-01', 'S-02', 'NOTE'], rows: ['1', '3'] })
+    expect(view(1)).toEqual({ label: 'GI', columns: ['CUE', 'HH', 'MM', 'SS', 'FF', 'QTY', 'Effect Description', 'GI-01', 'GI-02', 'NOTE'], rows: ['2', '3'] })
+
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(Buffer.from(await buildXlsx(sheets)) as unknown as ExcelJS.Buffer)
+    const ws = wb.getWorksheet('단발')!
+    const text = (r: number) => (ws.getRow(r).values as unknown[]).slice(1).map(String)
+    expect(text(3).slice(7)).toEqual(['S-01', 'S-02', 'NOTE'])
+    expect(text(4)[7]).toBe('D24')
+    expect(text(5)[8]).toBe('D8A')
+    expect(ws.getRow(6).cellCount).toBe(0)
+    expect(text(7).slice(7)).toEqual(['GI-01', 'GI-02', 'NOTE'])
+    expect(text(8)[8]).toBe('AA2')
+    expect(text(9)[7]).toBe('A91')
+  })
+
+  it('접두어가 하나뿐이면 표를 나누지 않는다', () => {
+    const { sheets } = run(['FC-01,1,00,00,01,00,shell,3P-01,1,,,1,A', 'FC-01,2,00,00,02,00,shell,4P-02,2,,,1,B'])
+    expect(sheet(sheets, '타상').blocks).toBeUndefined()
+  })
+
   it('T04/T11 신규 번호는 질문 없이 열 자동 생성 (P-01 ~ 최대 P-12 연속)', () => {
     const { sheets, analysis } = run([
       'FC-01,1,00,00,01,00,shell,3P-01,1,,,1,A',
@@ -237,15 +276,15 @@ describe('보조 규칙', () => {
     expect(ws.getCell('I2').value).toBe('047')
   })
 
-  it('CUE는 그룹 첫 행의 원본 CUE, 효과순 옵션은 같은 효과끼리 모은다', () => {
+  it('CUE는 그룹 첫 행의 원본 CUE, 기본(제품명순)은 같은 효과끼리 모은다', () => {
     const lines = [
       'FC-01,7,00,00,01,00,shell,3P-01,1,,,1,Zeta',
       'FC-01,8,00,00,02,00,shell,3P-01,2,,,1,alpha',
       'FC-01,9,00,00,03,00,shell,3P-01,3,,,1,Zeta'
     ]
-    const time = sheet(run(lines).sheets, '타상')
+    const time = sheet(run(lines, { rowOrder: 'time' }).sheets, '타상')
     expect(time.rows.map((r) => r[0].value)).toEqual(['7', '8', '9'])
-    const effect = sheet(run(lines, { rowOrder: 'effect' }).sheets, '타상')
+    const effect = sheet(run(lines).sheets, '타상')
     expect(effect.rows.map((r) => r[0].value)).toEqual(['8', '7', '9'])
   })
 
@@ -310,7 +349,7 @@ describe('보조 규칙', () => {
       'FC-01,1,00,00,09,00,shell,3P-01,1,,,1,Later',
       'FC-01,2,00,00,01,00,shell,3P-01,2,,,1, Early ',
       'FC-01,3,00,00,01,00,shell,3P-02,3,,,1,Early'
-    ])
+    ], { rowOrder: 'time' })
     const s = sheet(sheets, '타상')
     expect(s.rows.map((r) => r[s.columns.indexOf('Effect Description')].value)).toEqual(['Later', 'Early'])
   })

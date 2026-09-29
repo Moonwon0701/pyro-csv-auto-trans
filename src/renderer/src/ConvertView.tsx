@@ -35,7 +35,7 @@ function optionsFromProfile(p: Profile | undefined): TransformOptions {
     groupKeys: p.group_keys?.length ? p.group_keys : DEFAULT_OPTIONS.groupKeys,
     createEmptySheets: p.create_empty_sheets ?? true,
     singleControlSheetNaming: p.single_control_sheet_naming ?? 'simple',
-    rowOrder: p.row_order ?? 'time',
+    rowOrder: p.row_order ?? DEFAULT_OPTIONS.rowOrder,
     includeSourceSheet: p.include_source_sheet ?? false
   }
 }
@@ -433,8 +433,8 @@ export default function ConvertView({ active, rules, rulesRev, onRulesChanged, i
             <label className="opt">
               행 순서
               <select value={options.rowOrder} onChange={(e) => setOptions({ ...options, rowOrder: e.target.value as TransformOptions['rowOrder'] })}>
+                <option value="effect">제품명순 (같은 효과끼리 → 시간순)</option>
                 <option value="time">시간순</option>
-                <option value="effect">효과순 (같은 효과끼리 → 시간순)</option>
               </select>
             </label>
             <label className="opt">
