@@ -10,7 +10,7 @@
     { "pattern": "CF-*", "category": "연발", "output_prefix": "CF", "active": true, "source": "default" },
     { "pattern": "CK-*", "category": "연발", "output_prefix": "CK", "active": true, "source": "default" },
     { "pattern": "SCK-*", "category": "연발", "output_prefix": "SCK", "active": true, "source": "default" },
-    { "pattern": "S-*", "category": "단발", "output_prefix": "S", "active": true, "source": "default" },
+    { "pattern": "S-*", "category": "단발", "output_prefix": "S", "active": true, "source": "default", "jig": true },
     { "pattern": "G-*", "category": "단발", "output_prefix": "G", "active": true, "source": "default" },
     { "pattern": "H1-*", "category": "단발", "output_prefix": "H1", "active": true, "source": "default" },
     { "pattern": "H2-*", "category": "단발", "output_prefix": "H2", "active": true, "source": "default" },

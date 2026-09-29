@@ -29,6 +29,8 @@ export interface PositionRule {
   active: boolean
   source: 'default' | 'shared' | 'user'
   created_at?: string
+  /** 치구(단발 거치대)에 꽂는 위치. ① 치구 배치에서 각도순으로 나누고 그 순서대로 주소를 매긴다 */
+  jig?: boolean
 }
 
 export interface TypeRule {
@@ -65,6 +67,10 @@ export interface TransformOptions {
   rowOrder: 'time' | 'effect'
   /** 맨 앞에 원본(주소 매긴) 데이터 전체를 시트로 넣는다 */
   includeSourceSheet: boolean
+  /** Excel 맨 앞에 LAYOUT 시트 */
+  includeLayout: boolean
+  /** 단발 주소가 치구 순서로 매겨진 파일이면 치구 배치도 시트 */
+  includeJigSheet: boolean
 }
 
 export const DEFAULT_OPTIONS: TransformOptions = {
@@ -73,7 +79,9 @@ export const DEFAULT_OPTIONS: TransformOptions = {
   createEmptySheets: true,
   singleControlSheetNaming: 'simple',
   rowOrder: 'effect',
-  includeSourceSheet: false
+  includeSourceSheet: false,
+  includeLayout: true,
+  includeJigSheet: true
 }
 
 export interface ParsedCsv {

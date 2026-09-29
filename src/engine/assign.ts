@@ -129,8 +129,10 @@ export function listPositions(csv: ParsedCsv, rules: RuleSet): PositionSlot[] {
 /**
  * 자동 배정 제안: Control마다 startModule부터, Position마다 새 모듈에서 시작해 필요한 핀만큼 연속 배정.
  * 이미 쓰인 주소는 건너뛴다.
+ * jigModules(`${control}\u0000${pos}` → 모듈 수)가 있으면 치구 대상 위치는 치구 배치에 필요한 모듈 수만큼 비워 둔다
+ * (직렬이 많으면 16핀을 다 못 채우고 20발에서 모듈을 넘기기 때문).
  */
-export function proposePlan(slots: PositionSlot[], startModule = '01'): AssignPlanEntry[] {
+export function proposePlan(slots: PositionSlot[], startModule = '01', jigModules?: Map<string, number>): AssignPlanEntry[] {
   const plan: AssignPlanEntry[] = []
   const byControl = new Map<string, PositionSlot[]>()
   for (const s of slots) {
@@ -159,6 +161,8 @@ export function proposePlan(slots: PositionSlot[], startModule = '01'): AssignPl
       }
       plan.push({ control, pos: s.pos, ranges: `${indexToAddress(first)}-${indexToAddress(last)}` })
       cursor = last + 1
+      const reserve = jigModules?.get(keyOf(control, s.pos))
+      if (reserve) cursor = Math.max(cursor, Math.floor(first / PINS_PER_MODULE) * PINS_PER_MODULE + reserve * PINS_PER_MODULE)
     }
   }
   return plan

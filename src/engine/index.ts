@@ -6,3 +6,5 @@ export { mergeRules, prefixOfPattern, patternOfPrefix, findPositionRule, type Lo
 export { parsePosition, formatPosition } from './position'
 export * from './rule-request'
 export * from './assign'
+export * from './jig'
+export * from './layout'

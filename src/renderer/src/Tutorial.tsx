@@ -28,54 +28,78 @@ const SLIDES: Slide[] = [
     title: '불꽃쇼 CSV 자동 정리',
     body: (
       <>
-        <p>디자인 프로그램에서 뽑은 CSV를 현장에서 쓰는 Excel로 바꿔주는 프로그램입니다. 두 단계로 진행돼요.</p>
+        <p>디자인 프로그램에서 뽑은 CSV를 현장에서 쓰는 Excel로 바꿔주는 프로그램입니다. 세 단계로 진행돼요.</p>
         <div className="flow">
           <div className="flow-box">
             원본 CSV
             <small>주소 없음</small>
           </div>
           <div className="flow-arrow">
-            ① 주소 매기기
+            ① 치구 배치
             <span>→</span>
           </div>
-          <div className="flow-box">
-            주소 매긴 CSV
-            <small>ADDR 채움</small>
+          <div className="flow-arrow">
+            ② 주소 매기기
+            <span>→</span>
           </div>
           <div className="flow-arrow">
-            ② 시트 정리
+            ③ 시트 정리
             <span>→</span>
           </div>
           <div className="flow-box accent">
             현장용 Excel
-            <small>타상 / 연발 / 단발</small>
+            <small>LAYOUT · 치구 배치도 · 타상 / 연발 / 단발</small>
           </div>
         </div>
-        <p className="hint">이미 주소가 매겨진 CSV라면 ②부터 바로 시작하면 됩니다.</p>
+        <p className="hint">
+          화면 위의 ① › ② › ③ 순서대로 진행하고, 아래 “→” 버튼으로 다음 단계, “←” 버튼으로 이전 단계로 갑니다. 이미 주소가 매겨진 CSV라면 ③부터 바로 시작하면
+          됩니다.
+        </p>
       </>
     )
   },
   {
-    title: '① 주소 매기기',
+    title: '① 치구 배치',
     body: (
       <ol className="steps">
         <li>
-          ADDR이 비어 있는 원본 CSV를 창에 <b>끌어다 놓습니다</b>.
+          디자인 프로그램에서 뽑은 원본 CSV를 창에 <b>끌어다 놓습니다</b>. 처음 보는 위치 접두어(예: <span className="mono">FX-01</span>)가 있으면{' '}
+          <b>빨간 상자</b>에서 타상/연발/단발을 먼저 고릅니다.
         </li>
         <li>
-          위치(POS)마다 FM-A 주소 범위가 <b>자동으로 제안</b>됩니다. 위치마다 새 모듈에서 시작하고, 주소는 절대 겹치지 않아요.
+          단발(S-*) 약을 기운 방향 순서로 늘어놓고 <b>치구·모듈로 나눕니다</b>. 모듈이 치구 두 개에 걸치지 않아서 <b>모든 치구를 미리 결선</b>해 갈 수 있어요.
         </li>
         <li>
-          원하면 표에서 범위를 직접 고칩니다. 예: <span className="mono">310</span>, <span className="mono">310-33F</span>
+          <b>무대 지도</b>에서 위치를 누르면 <b>확대도</b>: 관객석에서 본 부채꼴(선 하나 = 약 하나)과 치구 칸 배치표(칸마다 <span className="mono">M1-3</span>{' '}
+          같은 핀 순서와 <span className="mono">↖60°</span> 같은 각도)가 나옵니다.
         </li>
         <li>
-          <b>주소 CSV 저장</b>으로 파일을 남기거나, <b>바로 시트 정리 →</b>로 ②로 넘어갑니다.
+          치구 크기(기본 4×5)는 왼쪽 <b>치구 설정</b>에서 바꿉니다. 다 됐으면 <b>② 주소 매기기 →</b>.
         </li>
       </ol>
     )
   },
   {
-    title: '② 시트 정리',
+    title: '② 주소 매기기',
+    body: (
+      <ol className="steps">
+        <li>
+          위치(POS)마다 FM-A 주소 범위가 <b>자동으로 제안</b>됩니다. 위치마다 새 모듈에서 시작하고, 주소는 절대 겹치지 않아요.
+        </li>
+        <li>
+          단발은 ①에서 정한 치구 순서 그대로 주소가 붙습니다 (<span className="mono">M1-3</span> → 예: <span className="mono">413</span>).
+        </li>
+        <li>
+          원하면 표에서 범위를 직접 고칩니다. 예: <span className="mono">310</span>, <span className="mono">310-33F</span>
+        </li>
+        <li>
+          <b>주소 CSV 저장</b>으로 파일을 남기거나 <b>③ 시트 정리 →</b>로 넘어갑니다.
+        </li>
+      </ol>
+    )
+  },
+  {
+    title: '③ 시트 정리',
     body: (
       <>
         <ol className="steps">

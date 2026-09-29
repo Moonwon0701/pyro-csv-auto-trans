@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { DEFAULT_JIG_PREFIXES } from '@engine/jig'
 import { CATEGORIES, EXCLUDE, outputPrefixOf, type PositionRule, type Resolution } from '@engine/types'
 import type { RulesState } from '../../main/rules-store'
 
@@ -97,6 +98,7 @@ export default function RulesView({ rules, onRulesChanged }: Props) {
               <th>카테고리</th>
               <th>변환</th>
               <th>출처</th>
+              <th title="② 치구 배치에서 각도순으로 치구에 꽂는 위치 (단발만)">치구</th>
               <th>사용</th>
               <th />
             </tr>
@@ -125,6 +127,16 @@ export default function RulesView({ rules, onRulesChanged }: Props) {
                   <td className="mono">{r.category === EXCLUDE ? '—' : `${outputPrefixOf(prefixOf(r.pattern), r.category)}-*`}</td>
                   <td>
                     <span className={`src ${isLocal ? 'user' : ''}`}>{isLocal ? (inShared ? '내 PC (공용 수정)' : '내 PC') : '공용'}</span>
+                  </td>
+                  <td>
+                    {r.category === '단발' && (
+                      <input
+                        className="toggle"
+                        type="checkbox"
+                        checked={r.jig ?? DEFAULT_JIG_PREFIXES.includes(p)}
+                        onChange={(e) => upsert({ ...r, jig: e.target.checked })}
+                      />
+                    )}
                   </td>
                   <td>
                     <input className="toggle" type="checkbox" checked={r.active} onChange={(e) => upsert({ ...r, active: e.target.checked })} />

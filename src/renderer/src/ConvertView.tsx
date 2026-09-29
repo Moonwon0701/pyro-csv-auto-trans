@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   CATEGORIES,
   DEFAULT_OPTIONS,
-  EXCLUDE,
   type Issue,
   type PositionRule,
   type Profile,
@@ -12,6 +11,7 @@ import {
 } from '@engine/types'
 import type { RulesState } from '../../main/rules-store'
 import type { OpenedFile } from '../../preload'
+import PrefixCard from './PrefixCard'
 import SheetPreview from './SheetPreview'
 import { TutorialBanner } from './Tutorial'
 
@@ -24,9 +24,12 @@ interface Props {
   incoming: OpenedFile | null
   tutorial: boolean
   onExitTutorial: () => void
+  /** 파일을 넘겨준 이전 단계로 돌아가기 (직접 연 파일이면 없음) */
+  onBack?: () => void
+  backLabel?: string
+  /** ① 치구 배치에서 이번 작업에만 쓰기로 고른 접두어 분류 (Rule로 저장하지 않은 것) */
+  presetResolutions?: Record<string, Resolution>
 }
-
-const RESOLUTIONS: Resolution[] = [...CATEGORIES, EXCLUDE]
 
 function optionsFromProfile(p: Profile | undefined): TransformOptions {
   if (!p) return DEFAULT_OPTIONS
@@ -36,11 +39,24 @@ function optionsFromProfile(p: Profile | undefined): TransformOptions {
     createEmptySheets: p.create_empty_sheets ?? true,
     singleControlSheetNaming: p.single_control_sheet_naming ?? 'simple',
     rowOrder: p.row_order ?? DEFAULT_OPTIONS.rowOrder,
-    includeSourceSheet: p.include_source_sheet ?? false
+    includeSourceSheet: p.include_source_sheet ?? false,
+    includeLayout: DEFAULT_OPTIONS.includeLayout,
+    includeJigSheet: DEFAULT_OPTIONS.includeJigSheet
   }
 }
 
-export default function ConvertView({ active, rules, rulesRev, onRulesChanged, incoming, tutorial, onExitTutorial }: Props) {
+export default function ConvertView({
+  active,
+  rules,
+  rulesRev,
+  onRulesChanged,
+  incoming,
+  tutorial,
+  onExitTutorial,
+  onBack,
+  backLabel,
+  presetResolutions
+}: Props) {
   const [file, setFile] = useState<OpenedFile | null>(null)
   const [result, setResult] = useState<TransformResult | null>(null)
   const [resolutions, setResolutions] = useState<Record<string, Resolution>>({})
@@ -78,7 +94,7 @@ export default function ConvertView({ active, rules, rulesRev, onRulesChanged, i
   }, [])
 
   useEffect(() => {
-    if (incoming) load(Promise.resolve(incoming), false)
+    if (incoming) load(Promise.resolve(incoming), false, presetResolutions)
   }, [incoming])
 
   // 이 화면이 열려 있으면 창 어디에 떨어뜨려도 파일을 받는다
@@ -100,14 +116,15 @@ export default function ConvertView({ active, rules, rulesRev, onRulesChanged, i
   }, [active])
 
   /** fromUser: 사용자가 직접 연 파일이면 튜토리얼을 끝낸다 (튜토리얼 중에는 Rule 저장이 막혀 있으므로) */
-  function load(p: Promise<OpenedFile | null>, fromUser = true) {
+  function load(p: Promise<OpenedFile | null>, fromUser = true, preset: Record<string, Resolution> = {}) {
     p.then((f) => {
       if (!f) return
       if (fromUser) onExitTutorial()
       setFile(f)
       setResult(null)
-      setResolutions({})
-      setSaveToMaster({})
+      // ①에서 이번 작업에만 쓰기로 고른 분류는 그대로 이어받고, Rule로는 저장하지 않는다
+      setResolutions(preset)
+      setSaveToMaster(Object.fromEntries(Object.keys(preset).map((k) => [k, false])))
       setStatus({ kind: '', text: '' })
     }).catch((e) => setStatus({ kind: 'err', text: `파일을 열 수 없습니다: ${e.message ?? e}` }))
   }
@@ -163,8 +180,11 @@ export default function ConvertView({ active, rules, rulesRev, onRulesChanged, i
         onDragLeave={() => setDragOver(false)}
       >
         <div className="icon">📄</div>
-        <h2>디자인 CSV 파일을 여기로 끌어다 놓으세요</h2>
-        <p>또는 클릭해서 파일 선택 · 타상/연발/단발 분류와 Cue 병합을 자동으로 처리합니다</p>
+        <h2>③ 시트 정리</h2>
+        <p>
+          원본 CSV는 <b>① 치구 배치</b>부터 하세요. ② 주소 매기기에서 “③ 시트 정리 →”를 누르면 여기로 넘어옵니다.
+          <br />이미 주소가 매겨진 CSV라면 여기에 끌어다 놓거나 클릭해서 열어도 됩니다.
+        </p>
         {status.kind === 'err' && <p style={{ color: 'var(--danger)', marginTop: 12 }}>{status.text}</p>}
       </div>
     )
@@ -249,81 +269,15 @@ export default function ConvertView({ active, rules, rulesRev, onRulesChanged, i
             </div>
           )}
 
-          {pendingPrefixes.length > 0 && (
-            <div className={`card ${unresolved.length ? 'alert' : ''}`}>
-              <h3>
-                미등록 POS Prefix <span className="count">{pendingPrefixes.length}</span>
-                <span className="spacer" />
-                {unresolved.some((m) => m.suggestion) && (
-                  <button
-                    className="btn small"
-                    onClick={() =>
-                      setResolutions((r) => {
-                        const next = { ...r }
-                        unresolved.forEach((m) => m.suggestion && (next[m.prefix] = m.suggestion))
-                        return next
-                      })
-                    }
-                  >
-                    TYPE 제안대로 선택
-                  </button>
-                )}
-              </h3>
-              <table className="grid">
-                <thead>
-                  <tr>
-                    <th>Prefix</th>
-                    <th className="num">행</th>
-                    <th>분류</th>
-                    <th title="Excel을 만들 때 이 선택을 Rule로 저장">Rule 저장</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pendingPrefixes.map((m) => (
-                    <tr key={m.prefix}>
-                      <td>
-                        <span className="mono">{m.prefix}-*</span>
-                        <div className="hint">
-                          예: {m.examples.join(', ')}
-                          {m.suggestion && ` · TYPE 제안: ${m.suggestion}`}
-                        </div>
-                      </td>
-                      <td className="num">{m.rowCount}</td>
-                      <td>
-                        <select
-                          value={resolutions[m.prefix] ?? ''}
-                          onChange={(e) =>
-                            setResolutions((r) => {
-                              const next = { ...r }
-                              if (e.target.value) next[m.prefix] = e.target.value as Resolution
-                              else delete next[m.prefix]
-                              return next
-                            })
-                          }
-                        >
-                          <option value="">선택하세요</option>
-                          {RESOLUTIONS.map((c) => (
-                            <option key={c} value={c}>
-                              {c}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <input
-                          type="checkbox"
-                          checked={!tutorial && (saveToMaster[m.prefix] ?? true)}
-                          disabled={tutorial}
-                          title={tutorial ? '튜토리얼 중에는 Rule을 저장하지 않습니다' : undefined}
-                          onChange={(e) => setSaveToMaster((s) => ({ ...s, [m.prefix]: e.target.checked }))}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <PrefixCard
+            mappings={pendingPrefixes}
+            resolutions={resolutions}
+            setResolutions={setResolutions}
+            saveToMaster={saveToMaster}
+            setSaveToMaster={setSaveToMaster}
+            tutorial={tutorial}
+            saveTitle="Excel을 만들 때 이 선택을 Rule로 저장"
+          />
 
           {a && (
             <div className="card">
@@ -446,6 +400,18 @@ export default function ConvertView({ active, rules, rulesRev, onRulesChanged, i
               />
             </label>
             <label className="opt">
+              LAYOUT 시트 포함 (위치별 모듈·발수)
+              <input type="checkbox" checked={options.includeLayout} onChange={(e) => setOptions({ ...options, includeLayout: e.target.checked })} />
+            </label>
+            <label className="opt">
+              치구 배치도 포함 (단발이 치구 순서로 매겨진 파일)
+              <input
+                type="checkbox"
+                checked={options.includeJigSheet}
+                onChange={(e) => setOptions({ ...options, includeJigSheet: e.target.checked })}
+              />
+            </label>
+            <label className="opt">
               데이터 없는 시트도 만들기
               <input
                 type="checkbox"
@@ -475,6 +441,11 @@ export default function ConvertView({ active, rules, rulesRev, onRulesChanged, i
       </div>
 
       <div className="actionbar">
+        {onBack && (
+          <button className="btn big" onClick={onBack}>
+            {backLabel ?? '← 이전 단계'}
+          </button>
+        )}
         <div className={`status ${status.kind}`}>
           {status.text ||
             (a?.blocked
@@ -482,7 +453,11 @@ export default function ConvertView({ active, rules, rulesRev, onRulesChanged, i
                 ? `미등록 Prefix ${unresolved.length}개의 분류를 선택해야 Excel을 만들 수 있습니다.`
                 : '필수 항목을 해결해야 Excel을 만들 수 있습니다.'
               : a
-                ? `${result!.sheets.length}개 시트가 만들어집니다.`
+                ? `${result!.sheets.length}개 시트가 만들어집니다.${
+                    options.includeLayout || options.includeJigSheet
+                      ? ` 맨 앞에 ${[options.includeLayout && 'LAYOUT', options.includeJigSheet && '치구 배치도'].filter(Boolean).join('·')}도 넣습니다.`
+                      : ''
+                  }`
                 : '분석 중…')}
           {status.path && (
             <button className="btn link" style={{ marginLeft: 10 }} onClick={() => window.api.showItem(status.path!)}>
