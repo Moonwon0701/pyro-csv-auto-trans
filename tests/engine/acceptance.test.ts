@@ -56,7 +56,7 @@ describe('Spec 10. Acceptance Test', () => {
       'FC-01,3,00,00,03,00,cake,SCK-03,3,,,1,C'
     ])
     const s = sheet(sheets, '연발')
-    expect(s.columns.filter((c) => /-\d+$/.test(c))).toEqual(['CF-01', 'CK-01', 'SCK-01', 'CF-02', 'CK-02', 'SCK-02', 'CF-03', 'CK-03', 'SCK-03'])
+    expect(s.columns.filter((c) => /-\d+$/.test(c))).toEqual(['CF-01', 'CF-02', 'CF-03', 'CK-01', 'CK-02', 'CK-03', 'SCK-01', 'SCK-02', 'SCK-03'])
     expect([cell(s, 0, 'CF-03'), cell(s, 1, 'CK-03'), cell(s, 2, 'SCK-03')]).toEqual(['1', '2', '3'])
   })
 
@@ -73,7 +73,7 @@ describe('Spec 10. Acceptance Test', () => {
     expect(s.rows).toHaveLength(4)
   })
 
-  it('여수: 같은 시간의 GI-04/GO-04가 한 칸에 섞이지 않고, 열은 번호(군)별로 기본 접두어 먼저', () => {
+  it('여수: 같은 시간의 GI-04/GO-04가 한 칸에 섞이지 않고, 열은 접두어끼리 묶고 기본 접두어 먼저', () => {
     const { sheets, analysis } = run(
       [
         'FC-01,1,00,00,01,00,single_shot,S-01,D24,,,1,A',
@@ -86,7 +86,7 @@ describe('Spec 10. Acceptance Test', () => {
       { GI: '단발', GO: '단발' }
     )
     const s = sheet(sheets, '단발')
-    expect(s.columns.filter((c) => /-\d+$/.test(c)).slice(0, 5)).toEqual(['S-01', 'GI-01', 'GO-01', 'GI-02', 'GO-02'])
+    expect(s.columns.filter((c) => /-\d+$/.test(c))).toEqual(['S-01', 'GI-01', 'GI-02', 'GI-03', 'GI-04', 'GO-01', 'GO-02', 'GO-03', 'GO-04'])
     expect([cell(s, 1, 'GI-04'), cell(s, 1, 'GO-04')]).toEqual(['AC2', 'BCA'])
     expect(analysis.issues.find((i) => i.code === 'MULTI_ADDRESS')).toBeUndefined()
     expect(analysis.prefixMappings.find((m) => m.prefix === 'GI')!.outputPrefix).toBe('GI')

@@ -357,17 +357,16 @@ export function transform(
     })
   }
   /**
-   * 위치 열: 번호(군)별로 묶고, 같은 번호 안에서는 기본 접두어(P/C/S) 먼저, 나머지는 이름순.
-   * 예) S-01, GI-01, GO-01, S-02, GI-02, GO-02 … 접두어마다 1번부터 자기 최대 번호까지 빈 번호도 채운다
+   * 위치 열: 접두어끼리 묶는다. 기본 접두어(P/C/S) 먼저, 나머지는 이름순 (혜원 2026-09-29).
+   * 예) C-01 … C-05, CF-01 … CF-05 … 접두어마다 1번부터 자기 최대 번호까지 빈 번호도 채운다
    */
   function positionColumns(category: Category): string[] {
     const maxByPrefix = positionMax.get(category)
     if (!maxByPrefix) return []
     const main = CATEGORY_PREFIX[category]
     const prefixes = [...maxByPrefix.keys()].sort((a, b) => (a === main ? -1 : b === main ? 1 : naturalCompare(a, b)))
-    const top = Math.max(...maxByPrefix.values())
     const columns: string[] = []
-    for (let n = 1; n <= top; n++) for (const p of prefixes) if (n <= maxByPrefix.get(p)!) columns.push(formatPosition(p, n))
+    for (const p of prefixes) for (let n = 1; n <= maxByPrefix.get(p)!; n++) columns.push(formatPosition(p, n))
     return columns
   }
   const baseFileName = csv.fileName.replace(/\.[^.]+$/, '')
@@ -451,7 +450,7 @@ export function transform(
       control,
       category,
       title: `${baseFileName} - ${name}`,
-      summary: `원본 ${sourceRowCount}행 → ${rows.length}개 그룹 | 병합 기준: ${groupKeyLabel} | 위치값: ${addressLabel} | ${category === '타상' ? 'POS 표준화: 타상 동일 끝번호끼리 통합' : 'POS: 원본 위치 그대로 (번호별로 묶음)'}`,
+      summary: `원본 ${sourceRowCount}행 → ${rows.length}개 그룹 | 병합 기준: ${groupKeyLabel} | 위치값: ${addressLabel} | ${category === '타상' ? 'POS 표준화: 타상 동일 끝번호끼리 통합' : 'POS: 원본 위치 그대로 (접두어별로 묶음)'}`,
       columns,
       rows,
       sourceRowCount
