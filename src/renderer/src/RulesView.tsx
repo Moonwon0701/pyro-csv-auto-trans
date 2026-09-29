@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CATEGORIES, CATEGORY_PREFIX, EXCLUDE, type PositionRule, type Resolution } from '@engine/types'
+import { CATEGORIES, EXCLUDE, outputPrefixOf, type PositionRule, type Resolution } from '@engine/types'
 import type { RulesState } from '../../main/rules-store'
 
 interface Props {
@@ -49,7 +49,7 @@ export default function RulesView({ rules, onRulesChanged }: Props) {
     await upsert({
       pattern: `${p}-*`,
       category: newCat,
-      output_prefix: newCat === EXCLUDE ? '' : CATEGORY_PREFIX[newCat],
+      output_prefix: outputPrefixOf(p, newCat),
       active: true,
       source: 'user'
     })
@@ -114,7 +114,7 @@ export default function RulesView({ rules, onRulesChanged }: Props) {
                       value={r.category}
                       onChange={(e) => {
                         const cat = e.target.value as Resolution
-                        upsert({ ...r, category: cat, output_prefix: cat === EXCLUDE ? '' : CATEGORY_PREFIX[cat] })
+                        upsert({ ...r, category: cat, output_prefix: outputPrefixOf(prefixOf(r.pattern), cat) })
                       }}
                     >
                       {RESOLUTIONS.map((c) => (
@@ -122,7 +122,7 @@ export default function RulesView({ rules, onRulesChanged }: Props) {
                       ))}
                     </select>
                   </td>
-                  <td className="mono">{r.category === EXCLUDE ? '—' : `${r.output_prefix || CATEGORY_PREFIX[r.category as never]}-*`}</td>
+                  <td className="mono">{r.category === EXCLUDE ? '—' : `${outputPrefixOf(prefixOf(r.pattern), r.category)}-*`}</td>
                   <td>
                     <span className={`src ${isLocal ? 'user' : ''}`}>{isLocal ? (inShared ? '내 PC (공용 수정)' : '내 PC') : '공용'}</span>
                   </td>

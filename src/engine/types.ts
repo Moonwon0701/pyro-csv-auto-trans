@@ -5,6 +5,15 @@ export type Resolution = Category | typeof EXCLUDE
 
 export const CATEGORY_PREFIX: Record<Category, string> = { 타상: 'P', 연발: 'C', 단발: 'S' }
 
+/**
+ * 결과 시트의 위치 열 접두어. 타상(3P~6P)만 같은 끝번호끼리 P-01로 합치고,
+ * 연발·단발은 원래 접두어를 그대로 쓴다 (C/CF, S/GI/GO는 현장에서 서로 다른 위치)
+ */
+export function outputPrefixOf(prefix: string, category: Resolution): string {
+  if (category === EXCLUDE) return ''
+  return category === '타상' ? CATEGORY_PREFIX.타상 : prefix.trim().toUpperCase()
+}
+
 /** 엔진이 인식하는 표준 컬럼 키 */
 export type ColumnKey =
   | 'CONTROL' | 'CUE' | 'HH' | 'MM' | 'SS' | 'FF' | 'TYPE' | 'POS'

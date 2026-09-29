@@ -10,7 +10,7 @@ import { DEFAULT_OPTIONS, parseCsv, transform, type RuleSet } from '../../src/en
 const DIR = 'samples/expected'
 const RULES: RuleSet = JSON.parse(readFileSync('rules/rules.json', 'utf8'))
 const cases = existsSync(DIR) ? readdirSync(DIR).filter((f) => f.endsWith('.json') && !f.endsWith('.meta.json')) : []
-const POS_COL = /^[PCS]-\d+$/
+const POS_COL = /^[A-Z0-9]+-\d+$/
 const EMPTY_TEXT = '해당 분류 데이터 없음'
 
 interface ExpectedSheet {

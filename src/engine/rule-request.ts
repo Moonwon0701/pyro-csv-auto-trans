@@ -1,4 +1,4 @@
-import { CATEGORIES, CATEGORY_PREFIX, EXCLUDE, type Category, type PositionRule, type Resolution, type RuleSet, type TypeRule } from './types'
+import { CATEGORIES, EXCLUDE, outputPrefixOf, type Category, type PositionRule, type Resolution, type RuleSet, type TypeRule } from './types'
 import { prefixOfPattern, type LocalRules } from './rules'
 
 /** GitHub 이슈 제목 머리말. 워크플로가 이것으로 Rule 요청을 알아본다 */
@@ -88,7 +88,7 @@ export function applyRuleRequest(rules: RuleSet, req: RuleRequest, today: string
     const next: PositionRule = {
       pattern: `${p.prefix}-*`,
       category: p.category,
-      output_prefix: p.category === EXCLUDE ? '' : CATEGORY_PREFIX[p.category as Category],
+      output_prefix: outputPrefixOf(p.prefix, p.category),
       active: p.active,
       source: 'user'
     }

@@ -6,6 +6,7 @@ import {
   CATEGORIES,
   CATEGORY_PREFIX,
   EXCLUDE,
+  outputPrefixOf,
   type Analysis,
   type Category,
   type ColumnKey,
@@ -38,7 +39,8 @@ interface PositionSlot {
 interface Group {
   key: Partial<Record<ColumnKey, string>>
   extras: Map<ColumnKey, string[]>
-  positions: Map<number, PositionSlot>
+  /** 위치 열 이름(S-01, GI-01 …) → 주소 */
+  positions: Map<string, PositionSlot>
   unplaced: string[]
   sourceRows: number
   /** 그룹 첫 행의 원본 CUE */
@@ -51,7 +53,6 @@ interface SheetBucket {
   control: string
   category: Category
   groups: Map<string, Group>
-  outputPrefix: string
   rowCount: number
 }
 
@@ -149,6 +150,8 @@ export function transform(
   const controlCounts = new Map<string, number>()
   const prefixInfo = new Map<string, { rowCount: number; examples: string[]; typeVotes: Map<Category, number> }>()
   const unclassified: { row: string[]; line: number }[] = []
+  /** 분류별 위치 접두어 → 최대 번호 (Control이 달라도 같은 열 구성을 쓴다) */
+  const positionMax = new Map<Category, Map<string, number>>()
   const addrSummary = { addr: 0, modulePin: 0, none: 0 }
   /** Control별 주소 → 쓰인 곳(POS@시간) */
   const addressUse = new Map<string, Map<string, Set<string>>>()
@@ -180,7 +183,7 @@ export function transform(
       if (!resolved) return // 미등록 prefix: 사용자 결정 전까지 보류 (Blocking)
       category = resolved
       if (resolved !== EXCLUDE) {
-        outputPrefix = (rule?.output_prefix || CATEGORY_PREFIX[resolved]).toUpperCase()
+        outputPrefix = outputPrefixOf(parsed.prefix, resolved)
         positionNumber = parsed.number
         if (typeRule && typeRule.category !== resolved) {
           issues.add('TYPE_MISMATCH', 'info', 'POS Rule과 TYPE의 분류가 다른 행이 있습니다. POS Rule을 우선 적용했습니다.', {
@@ -243,7 +246,7 @@ export function transform(
     const bucketKey = `${control}\u0000${category}`
     let bucket = buckets.get(bucketKey)
     if (!bucket) {
-      bucket = { control, category, groups: new Map(), outputPrefix: CATEGORY_PREFIX[category], rowCount: 0 }
+      bucket = { control, category, groups: new Map(), rowCount: 0 }
       buckets.set(bucketKey, bucket)
     }
     bucket.rowCount++
@@ -262,9 +265,12 @@ export function transform(
       pushUnique(group.extras.get(k)!, get(row, k))
     }
     if (positionNumber !== null && outputPrefix) {
-      bucket.outputPrefix = outputPrefix
-      let slot = group.positions.get(positionNumber)
-      if (!slot) group.positions.set(positionNumber, (slot = { values: [], missing: false }))
+      let maxByPrefix = positionMax.get(category)
+      if (!maxByPrefix) positionMax.set(category, (maxByPrefix = new Map()))
+      maxByPrefix.set(outputPrefix, Math.max(maxByPrefix.get(outputPrefix) ?? 0, positionNumber))
+      const column = formatPosition(outputPrefix, positionNumber)
+      let slot = group.positions.get(column)
+      if (!slot) group.positions.set(column, (slot = { values: [], missing: false }))
       if (address) pushUnique(slot.values, address)
       else slot.missing = true
     } else {
@@ -308,7 +314,7 @@ export function transform(
         prefix,
         status: 'rule',
         category: rule.category,
-        outputPrefix: rule.category === EXCLUDE ? null : rule.output_prefix || CATEGORY_PREFIX[rule.category],
+        outputPrefix: outputPrefixOf(prefix, rule.category) || null,
         rowCount: info.rowCount,
         ruleSource: rule.source,
         examples: info.examples
@@ -319,7 +325,7 @@ export function transform(
         prefix,
         status: res ? 'resolved' : 'unknown',
         category: res ?? null,
-        outputPrefix: res && res !== EXCLUDE ? CATEGORY_PREFIX[res] : null,
+        outputPrefix: res ? outputPrefixOf(prefix, res) || null : null,
         rowCount: info.rowCount,
         suggestion,
         examples: info.examples
@@ -350,11 +356,19 @@ export function transform(
       plain: true
     })
   }
-  const maxPosition = new Map<Category, number>()
-  for (const b of buckets.values()) {
-    for (const g of b.groups.values()) {
-      for (const n of g.positions.keys()) maxPosition.set(b.category, Math.max(maxPosition.get(b.category) ?? 0, n))
-    }
+  /**
+   * 위치 열: 번호(군)별로 묶고, 같은 번호 안에서는 기본 접두어(P/C/S) 먼저, 나머지는 이름순.
+   * 예) S-01, GI-01, GO-01, S-02, GI-02, GO-02 … 접두어마다 1번부터 자기 최대 번호까지 빈 번호도 채운다
+   */
+  function positionColumns(category: Category): string[] {
+    const maxByPrefix = positionMax.get(category)
+    if (!maxByPrefix) return []
+    const main = CATEGORY_PREFIX[category]
+    const prefixes = [...maxByPrefix.keys()].sort((a, b) => (a === main ? -1 : b === main ? 1 : naturalCompare(a, b)))
+    const top = Math.max(...maxByPrefix.values())
+    const columns: string[] = []
+    for (let n = 1; n <= top; n++) for (const p of prefixes) if (n <= maxByPrefix.get(p)!) columns.push(formatPosition(p, n))
+    return columns
   }
   const baseFileName = csv.fileName.replace(/\.[^.]+$/, '')
   const groupKeyLabel = opts.groupKeys.map((k) => (cols.has(k) ? headerOf(k) : k)).join(' + ')
@@ -391,8 +405,7 @@ export function transform(
       const ef = (g: Group) => (g.key.EFFECT ?? '').toLowerCase()
       groups.sort((a, b) => (ef(a) < ef(b) ? -1 : ef(a) > ef(b) ? 1 : 0) || a.order - b.order)
     }
-    const prefix = bucket?.outputPrefix ?? CATEGORY_PREFIX[category]
-    const numbers = Array.from({ length: maxPosition.get(category) ?? 0 }, (_, i) => i + 1)
+    const positions = positionColumns(category)
     const hasUnplaced = groups.some((g) => g.unplaced.length > 0)
 
     const lead: ColumnKey[] = (['HH', 'MM', 'SS', 'FF'] as ColumnKey[]).filter((k) => cols.has(k))
@@ -402,7 +415,7 @@ export function transform(
     const columns = [
       'CUE',
       ...[...lead, ...before, ...effect, ...after].map(headerOf),
-      ...numbers.map((n) => formatPosition(prefix, n)),
+      ...positions,
       ...(hasUnplaced ? [UNPLACED_COLUMN] : []),
       NOTE_COLUMN
     ]
@@ -413,15 +426,15 @@ export function transform(
       for (const k of before) cells.push({ value: (g.extras.get(k) ?? []).join(', ') })
       for (const k of effect) cells.push({ value: g.key[k] ?? '' })
       for (const k of after) cells.push({ value: (g.extras.get(k) ?? []).join(', ') })
-      for (const n of numbers) {
-        const slot = g.positions.get(n)
+      for (const column of positions) {
+        const slot = g.positions.get(column)
         if (!slot) cells.push({ value: '' })
         else if (slot.values.length === 0) cells.push({ value: MISSING_ADDRESS_TEXT, flag: 'missing' })
         else {
           const conflict = slot.values.length > 1
           if (conflict) {
             issues.add('MULTI_ADDRESS', 'warning', '같은 Cue·같은 Position에 주소가 여러 개 있습니다. 모두 보존했습니다.', {
-              detail: `${name} / ${[g.key.HH, g.key.MM, g.key.SS, g.key.FF].join(':')} ${g.key.EFFECT ?? ''} / ${formatPosition(prefix, n)} = ${slot.values.join(', ')}`
+              detail: `${name} / ${[g.key.HH, g.key.MM, g.key.SS, g.key.FF].join(':')} ${g.key.EFFECT ?? ''} / ${column} = ${slot.values.join(', ')}`
             })
           }
           cells.push({ value: slot.values.join(', '), flag: conflict ? 'conflict' : undefined })
@@ -438,7 +451,7 @@ export function transform(
       control,
       category,
       title: `${baseFileName} - ${name}`,
-      summary: `원본 ${sourceRowCount}행 → ${rows.length}개 그룹 | 병합 기준: ${groupKeyLabel} | 위치값: ${addressLabel} | POS 표준화: ${category} 동일 끝번호끼리 통합`,
+      summary: `원본 ${sourceRowCount}행 → ${rows.length}개 그룹 | 병합 기준: ${groupKeyLabel} | 위치값: ${addressLabel} | ${category === '타상' ? 'POS 표준화: 타상 동일 끝번호끼리 통합' : 'POS: 원본 위치 그대로 (번호별로 묶음)'}`,
       columns,
       rows,
       sourceRowCount

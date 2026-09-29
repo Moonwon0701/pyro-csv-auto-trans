@@ -65,7 +65,7 @@ describe('Rule 요청', () => {
     expect(changes).toEqual(['추가: `FX-*` → 연발', '변경: `TX-*` → 타상'])
     expect(rules.version).toBe(shared.version + 1)
     expect(rules.positionRules).toHaveLength(shared.positionRules.length + 1)
-    expect(rules.positionRules.find((r) => r.pattern === 'FX-*')).toMatchObject({ output_prefix: 'C', source: 'user', created_at: '2026-09-30' })
+    expect(rules.positionRules.find((r) => r.pattern === 'FX-*')).toMatchObject({ output_prefix: 'FX', source: 'user', created_at: '2026-09-30' })
     expect(rules.positionRules.find((r) => r.pattern === 'TX-*')).toMatchObject({ category: '타상', output_prefix: 'P', source: 'default' })
     expect(rules.profiles).toEqual(shared.profiles)
   })

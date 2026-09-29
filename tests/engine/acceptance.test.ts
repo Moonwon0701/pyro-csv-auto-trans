@@ -48,18 +48,19 @@ describe('Spec 10. Acceptance Test', () => {
     expect(s.rows.map((r) => cell(s, s.rows.indexOf(r), 'P-01'))).toEqual(['101', '102', '103', '104'])
   })
 
-  it('T02 CF/CK/SCK-03 → C-03', () => {
+  // 스펙은 연발·단발도 끝번호로 합치라고 했지만, 현장에서 C/CF, S/GI/GO는 서로 다른 위치라 따로 둔다 (혜원 2026-09-29)
+  it('T02 연발 CF/CK/SCK-03은 C-03으로 합치지 않고 각자 열', () => {
     const { sheets } = run([
       'FC-01,1,00,00,01,00,cake,CF-03,1,,,1,A',
       'FC-01,2,00,00,02,00,cake,CK-03,2,,,1,B',
       'FC-01,3,00,00,03,00,cake,SCK-03,3,,,1,C'
     ])
     const s = sheet(sheets, '연발')
-    expect(s.columns.filter((c) => /^C-/.test(c))).toEqual(['C-01', 'C-02', 'C-03'])
-    expect(s.rows.map((_, i) => cell(s, i, 'C-03'))).toEqual(['1', '2', '3'])
+    expect(s.columns.filter((c) => /-\d+$/.test(c))).toEqual(['CF-01', 'CK-01', 'SCK-01', 'CF-02', 'CK-02', 'SCK-02', 'CF-03', 'CK-03', 'SCK-03'])
+    expect([cell(s, 0, 'CF-03'), cell(s, 1, 'CK-03'), cell(s, 2, 'SCK-03')]).toEqual(['1', '2', '3'])
   })
 
-  it('T03 G/H1/H2/TX-08 → S-08', () => {
+  it('T03 단발 G/H1/H2/TX-08도 각자 열', () => {
     const { sheets } = run([
       'FC-01,1,00,00,01,00,single_shot,G-08,1,,,1,A',
       'FC-01,2,00,00,02,00,single_shot,H1-08,2,,,1,B',
@@ -67,8 +68,31 @@ describe('Spec 10. Acceptance Test', () => {
       'FC-01,4,00,00,04,00,single_shot,TX-08,4,,,1,D'
     ])
     const s = sheet(sheets, '단발')
-    expect(s.columns.filter((c) => /^S-/.test(c)).at(-1)).toBe('S-08')
+    expect(s.columns.filter((c) => /-08$/.test(c))).toEqual(['G-08', 'H1-08', 'H2-08', 'TX-08'])
+    expect(s.columns.some((c) => /^S-/.test(c))).toBe(false)
     expect(s.rows).toHaveLength(4)
+  })
+
+  it('여수: 같은 시간의 GI-04/GO-04가 한 칸에 섞이지 않고, 열은 번호(군)별로 기본 접두어 먼저', () => {
+    const { sheets, analysis } = run(
+      [
+        'FC-01,1,00,00,01,00,single_shot,S-01,D24,,,1,A',
+        'FC-01,2,00,00,02,00,single_shot,GO-04,BCA,,,1,B',
+        'FC-01,3,00,00,02,00,single_shot,GI-04,AC2,,,1,B',
+        'FC-01,4,00,00,03,00,cake,C-01,8F6,,,1,C',
+        'FC-01,5,00,00,03,00,cake,CF-01,958,,,1,C'
+      ],
+      {},
+      { GI: '단발', GO: '단발' }
+    )
+    const s = sheet(sheets, '단발')
+    expect(s.columns.filter((c) => /-\d+$/.test(c)).slice(0, 5)).toEqual(['S-01', 'GI-01', 'GO-01', 'GI-02', 'GO-02'])
+    expect([cell(s, 1, 'GI-04'), cell(s, 1, 'GO-04')]).toEqual(['AC2', 'BCA'])
+    expect(analysis.issues.find((i) => i.code === 'MULTI_ADDRESS')).toBeUndefined()
+    expect(analysis.prefixMappings.find((m) => m.prefix === 'GI')!.outputPrefix).toBe('GI')
+    const c = sheet(sheets, '연발')
+    expect(c.columns.filter((x) => /-\d+$/.test(x))).toEqual(['C-01', 'CF-01'])
+    expect([cell(c, 0, 'C-01'), cell(c, 0, 'CF-01')]).toEqual(['8F6', '958'])
   })
 
   it('T04/T11 신규 번호는 질문 없이 열 자동 생성 (P-01 ~ 최대 P-12 연속)', () => {
@@ -93,10 +117,10 @@ describe('Spec 10. Acceptance Test', () => {
     expect(sheets.every((s) => s.rows.length === 0)).toBe(true)
   })
 
-  it('T05b 사용자가 FX를 단발로 지정하면 S-01로 처리', () => {
+  it('T05b 사용자가 FX를 단발로 지정하면 단발 시트의 FX-01 열로 처리', () => {
     const { analysis, sheets } = run(['FC-01,1,00,00,01,00,single_shot,FX-01,77,,,1,A'], {}, { FX: '단발' })
     expect(analysis.blocked).toBe(false)
-    expect(cell(sheet(sheets, '단발'), 0, 'S-01')).toBe('77')
+    expect(cell(sheet(sheets, '단발'), 0, 'FX-01')).toBe('77')
   })
 
   it('T06 ADDR=221 → 위치 셀 221', () => {
@@ -189,12 +213,12 @@ describe('Spec 10.1 실패하면 안 되는 항목', () => {
     expect(analysis.blocked).toBe(true)
   })
 
-  it('Position 최대값을 고정하지 않는다 (S-23, P-99)', () => {
+  it('Position 최대값을 고정하지 않는다 (H1-23, P-99)', () => {
     const { sheets } = run([
       'FC-01,1,00,00,01,00,single_shot,H1-23,1,,,1,A',
       'FC-01,2,00,00,02,00,shell,3P-99,1,,,1,A'
     ])
-    expect(sheet(sheets, '단발').columns).toContain('S-23')
+    expect(sheet(sheets, '단발').columns).toContain('H1-23')
     expect(sheet(sheets, '타상').columns).toContain('P-99')
   })
 })
