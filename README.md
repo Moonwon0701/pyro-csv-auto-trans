@@ -1,0 +1,78 @@
+# 불꽃쇼 CSV 자동 정리 (Pyro CSV Organizer)
+
+불꽃쇼 디자인 프로그램에서 Export한 CSV를 **현장용 Excel**로 자동 정리하는 데스크톱 프로그램입니다.
+
+- Control별 × **타상 / 연발 / 단발** 시트 자동 분리 (FC-01, FC-02 … 개수 제한 없음)
+- POS 표준화: `3P/4P/5P/6P → P`, `C/CF/CK/SCK → C`, `S/G/H1/H2/TX → S` (위치번호 유지, 열 자동 확장)
+- **HH + MM + SS + FF + Effect Description** 이 같은 행을 한 줄(Cue)로 병합
+- 주소: `ADDR` 우선, 없으면 `MODULE-PIN` (예: 12-29)
+- 처음 보는 Prefix(예: `FX-01`)는 추측하지 않고 사용자에게 분류를 물어봄
+- 같은 위치에 주소가 여러 개면 **모두 보존**하고 노란색으로 표시
+
+---
+
+## 디자이너용: 설치하기
+
+[**최신 버전 다운로드 (Releases)**](https://github.com/Moonwon0701/pyro-csv-auto-trans/releases/latest)
+
+### Windows
+1. `PyroCSV-Setup-x.y.z.exe`를 받아서 실행합니다.
+2. "Windows의 PC 보호" 창이 뜨면 **추가 정보 → 실행**을 누릅니다. (코드서명이 없는 사내 프로그램이라 뜨는 창입니다.)
+3. 바탕화면의 **불꽃쇼 CSV 자동 정리** 아이콘으로 실행합니다. 새 버전이 나오면 자동으로 받아서 "재시작해서 적용" 버튼을 띄웁니다.
+
+### Mac
+1. `PyroCSV-x.y.z-mac.dmg`를 받아서 열고 앱을 **응용 프로그램** 폴더로 끌어다 놓습니다.
+2. 처음 실행할 때는 앱을 **우클릭(Control+클릭) → 열기 → 열기**로 실행합니다. (한 번만 하면 됩니다.)
+   - "손상되었기 때문에 열 수 없습니다"라는 메시지가 나오면 터미널에서 `xattr -cr "/Applications/Pyro CSV Organizer.app"`를 실행한 뒤 다시 엽니다.
+3. 새 버전이 나오면 앱 상단에 알림이 뜹니다. 다운로드 페이지에서 새 dmg를 받아 덮어쓰면 됩니다.
+
+## 사용법
+
+1. CSV 파일을 창에 **끌어다 놓습니다**. 클릭해서 선택해도 됩니다.
+2. 왼쪽에서 분석 결과를 확인합니다: Control, 주소 방식, Rule 적용 결과, 경고.
+   - **미등록 POS Prefix**가 있으면 빨간 상자에서 타상/연발/단발/제외 중 하나를 고릅니다. "Rule 저장"에 체크하면 다음부터 자동으로 처리됩니다.
+3. 오른쪽 미리보기에서 시트를 확인한 뒤 **Excel 생성**을 누릅니다. 결과는 `원본파일명_정리.xlsx`로 저장됩니다.
+
+| 표시 | 의미 |
+|---|---|
+| 노란 셀 | 같은 Cue·같은 위치에 주소가 여러 개 (모두 보존) |
+| 주황 셀 `주소없음` | 해당 위치는 쓰였지만 ADDR/MODULE-PIN 값이 없음 |
+| `미배치 POS` 열 | POS 형식을 인식하지 못했지만 TYPE으로 분류된 행 (원본 값 보존) |
+| `미분류` 시트 | POS와 TYPE 모두로 분류할 수 없는 행의 원본 |
+
+## 관리자용: 공용 Rule 관리
+
+모든 PC는 시작할 때 이 저장소의 [`rules/rules.json`](rules/rules.json)을 받아서 사용합니다. 오프라인이면 마지막으로 받은 사본을 씁니다.
+
+- **직접 수정**: GitHub에서 `rules/rules.json`을 편집하고 Commit하면, 각 PC에서 앱을 다시 켜거나 "Rule 관리 → 최신 공용 Rule 받기"를 누를 때 반영됩니다.
+- **디자이너가 추가한 Rule 모으기**: 디자이너 PC의 "Rule 관리 → 공용 Rule로 올리기"를 누르면 전체 rules.json 내용이 클립보드에 복사되고 GitHub 편집 페이지가 열립니다. 편집 권한이 있는 사람이 기존 내용을 지우고 붙여넣은 뒤 Commit합니다.
+
+```jsonc
+// positionRules 항목 예시
+{ "pattern": "FX-*", "category": "단발", "output_prefix": "S", "active": true, "source": "user" }
+// category: "타상" | "연발" | "단발" | "제외"
+```
+
+---
+
+## 개발
+
+```bash
+npm install
+npm run dev        # 개발 모드 실행
+npm test           # 변환 엔진 테스트 (Spec의 T01~T12 포함)
+npm run dist:win   # Windows 설치파일 → dist/
+```
+
+- `src/engine/`: 변환 엔진 (순수 TypeScript, Electron 의존성 없음)
+- `src/main/`: Electron main (파일 입출력, Rule 동기화, 업데이트)
+- `src/renderer/`: 화면 (React)
+
+### 새 버전 배포
+
+```bash
+npm version patch          # package.json 버전 올림 + 태그 생성
+git push --follow-tags     # GitHub Actions가 Windows/Mac 설치파일을 만들어 Release에 올림
+```
+
+> 고객 CSV와 결과 Excel은 저장소에 올리지 않습니다. 실제 샘플은 `samples/` 폴더(git 제외)에 두고 테스트하세요.

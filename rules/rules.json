@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "updated_at": "2026-09-29",
+  "positionRules": [
+    { "pattern": "3P-*", "category": "타상", "output_prefix": "P", "active": true, "source": "default" },
+    { "pattern": "4P-*", "category": "타상", "output_prefix": "P", "active": true, "source": "default" },
+    { "pattern": "5P-*", "category": "타상", "output_prefix": "P", "active": true, "source": "default" },
+    { "pattern": "6P-*", "category": "타상", "output_prefix": "P", "active": true, "source": "default" },
+    { "pattern": "C-*", "category": "연발", "output_prefix": "C", "active": true, "source": "default" },
+    { "pattern": "CF-*", "category": "연발", "output_prefix": "C", "active": true, "source": "default" },
+    { "pattern": "CK-*", "category": "연발", "output_prefix": "C", "active": true, "source": "default" },
+    { "pattern": "SCK-*", "category": "연발", "output_prefix": "C", "active": true, "source": "default" },
+    { "pattern": "S-*", "category": "단발", "output_prefix": "S", "active": true, "source": "default" },
+    { "pattern": "G-*", "category": "단발", "output_prefix": "S", "active": true, "source": "default" },
+    { "pattern": "H1-*", "category": "단발", "output_prefix": "S", "active": true, "source": "default" },
+    { "pattern": "H2-*", "category": "단발", "output_prefix": "S", "active": true, "source": "default" },
+    { "pattern": "TX-*", "category": "단발", "output_prefix": "S", "active": true, "source": "default" }
+  ],
+  "typeRules": [
+    { "type": "shell", "category": "타상" },
+    { "type": "cake", "category": "연발" },
+    { "type": "single_shot", "category": "단발" },
+    { "type": "mine", "category": "단발" }
+  ],
+  "profiles": [
+    {
+      "profile_name": "기본 (자동 감지)",
+      "address_source": "auto",
+      "group_keys": ["HH", "MM", "SS", "FF", "EFFECT"],
+      "create_empty_sheets": true,
+      "single_control_sheet_naming": "simple"
+    },
+    {
+      "profile_name": "FASEECOM Standard",
+      "address_source": "addr",
+      "group_keys": ["HH", "MM", "SS", "FF", "EFFECT"],
+      "create_empty_sheets": true,
+      "single_control_sheet_naming": "simple"
+    },
+    {
+      "profile_name": "FirePioneer",
+      "address_source": "module_pin",
+      "group_keys": ["HH", "MM", "SS", "FF", "EFFECT"],
+      "create_empty_sheets": true,
+      "single_control_sheet_naming": "simple"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+CONTROL,CUE,HH,MM,SS,FF,TYPE,POS,ADDR,MODULE,PIN,QTY,REF,Event Description,Effect Description
+FC-01,1,00,01,40,05,shell,3P-01,221,,,1,SH-3OS,Opening,3 Orange Strobe
+FC-01,2,00,01,40,05,shell,4P-02,241,,,1,SH-3OS,Opening,3 Orange Strobe
+FC-01,3,00,01,40,05,shell,5P-03,261,,,1,SH-3OS,Opening,3 Orange Strobe
+FC-01,4,00,01,40,05,shell,6P-01,47A,,,1,SH-3OS,Opening,3 Orange Strobe
+FC-01,5,00,01,42,00,cake,CF-03,301,,,1,CK-100,Opening,100 Shot Gold Fan
+FC-01,6,00,01,42,00,cake,CK-04,302,,,1,CK-100,Opening,100 Shot Gold Fan
+FC-01,7,00,01,43,10,single_shot,G-08,1F0,,,1,SS-RED,,Red Comet
+FC-01,8,00,01,43,10,single_shot,H1-08,410,,,1,SS-RED,,Red Comet
+FC-01,9,00,01,43,10,single_shot,TX-16,411,,,1,SS-RED,,Red Comet
+FC-01,10,00,01,44,00,mine,FX-01,501,,,2,MN-G,,Green Mine
+FC-02,1,00,02,00,00,shell,3P-12,222,,,1,SH-4W,Finale,4 White Willow
+FC-02,2,00,02,00,00,shell,5P-12,223,,,1,SH-4W,Finale,4 White Willow
+FC-02,3,00,02,00,00,shell,3P-08,,,,1,SH-4W,Finale,4 White Willow
+FC-02,4,00,02,01,00,cake,SCK-01,601,,,1,CK-200,Finale,200 Shot Silver
+FC-02,5,00,02,01,00,cake,C-02,602,,,1,CK-200,Finale,200 Shot Silver

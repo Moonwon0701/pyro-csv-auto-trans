@@ -1,0 +1,33 @@
+appId: com.pyro.csvorganizer
+productName: Pyro CSV Organizer
+copyright: Copyright © 2026
+directories:
+  buildResources: build
+  output: dist
+files:
+  - out/**/*
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: PyroCSV-Setup-${version}.${ext}
+nsis:
+  oneClick: true
+  perMachine: false
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: 불꽃쇼 CSV 자동 정리
+mac:
+  target:
+    - target: dmg
+      arch: [universal]
+  category: public.app-category.productivity
+  identity: null
+  artifactName: PyroCSV-${version}-mac.${ext}
+dmg:
+  title: Pyro CSV Organizer
+publish:
+  provider: github
+  owner: Moonwon0701
+  repo: pyro-csv-auto-trans
+  releaseType: release

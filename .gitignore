@@ -1,0 +1,8 @@
+node_modules/
+out/
+dist/
+samples/
+*.docx
+*.xlsx
+!tests/fixtures/*.xlsx
+.DS_Store

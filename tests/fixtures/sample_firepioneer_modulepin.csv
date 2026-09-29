@@ -1,0 +1,8 @@
+CONTROL,CUE,HH,MM,SS,FF,TYPE,POS,ADDR,MODULE,PIN,QTY,Effect Description
+firepioneer,1,00,00,10,00,shell,3P-01,,12,29,1,Gold Brocade
+firepioneer,2,00,00,10,00,shell,4P-02,,12,30,1,Gold Brocade
+firepioneer,3,00,00,10,00,shell,5P-01,,20,28,1,Gold Brocade
+firepioneer,4,00,00,12,15,cake,CK-01,,31,1,1,Blue Fan
+firepioneer,5,00,00,12,15,cake,SCK-01,,31,2,1,Blue Fan
+firepioneer,6,00,00,14,00,single_shot,S-03,,40,5,1,White Strobe
+firepioneer,7,00,00,14,00,single_shot,S-04,,40,6,1,White Strobe
