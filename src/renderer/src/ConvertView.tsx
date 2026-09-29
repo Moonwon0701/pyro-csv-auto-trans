@@ -15,9 +15,12 @@ import type { OpenedFile } from '../../preload'
 import SheetPreview from './SheetPreview'
 
 interface Props {
+  active: boolean
   rules: RulesState | null
   rulesRev: number
   onRulesChanged: (s: RulesState) => void
+  /** 주소 매기기 화면에서 넘어온 파일 */
+  incoming: OpenedFile | null
 }
 
 const RESOLUTIONS: Resolution[] = [...CATEGORIES, EXCLUDE]
@@ -28,11 +31,12 @@ function optionsFromProfile(p: Profile | undefined): TransformOptions {
     addressSource: p.address_source ?? 'auto',
     groupKeys: p.group_keys?.length ? p.group_keys : DEFAULT_OPTIONS.groupKeys,
     createEmptySheets: p.create_empty_sheets ?? true,
-    singleControlSheetNaming: p.single_control_sheet_naming ?? 'simple'
+    singleControlSheetNaming: p.single_control_sheet_naming ?? 'simple',
+    rowOrder: p.row_order ?? 'time'
   }
 }
 
-export default function ConvertView({ rules, rulesRev, onRulesChanged }: Props) {
+export default function ConvertView({ active, rules, rulesRev, onRulesChanged, incoming }: Props) {
   const [file, setFile] = useState<OpenedFile | null>(null)
   const [result, setResult] = useState<TransformResult | null>(null)
   const [resolutions, setResolutions] = useState<Record<string, Resolution>>({})
@@ -65,8 +69,17 @@ export default function ConvertView({ rules, rulesRev, onRulesChanged }: Props) 
     }
   }, [file, resolutions, options, rulesRev])
 
-  // 창 어디에 떨어뜨려도 파일을 받는다
   useEffect(() => {
+    window.api.onOpened((f) => load(Promise.resolve(f)))
+  }, [])
+
+  useEffect(() => {
+    if (incoming) load(Promise.resolve(incoming))
+  }, [incoming])
+
+  // 이 화면이 열려 있으면 창 어디에 떨어뜨려도 파일을 받는다
+  useEffect(() => {
+    if (!active) return
     const prevent = (e: DragEvent) => e.preventDefault()
     const drop = (e: DragEvent) => {
       e.preventDefault()
@@ -74,14 +87,13 @@ export default function ConvertView({ rules, rulesRev, onRulesChanged }: Props) 
       const f = e.dataTransfer?.files?.[0]
       if (f) load(window.api.openDroppedFile(f))
     }
-    window.api.onOpened((f) => load(Promise.resolve(f)))
     window.addEventListener('dragover', prevent)
     window.addEventListener('drop', drop)
     return () => {
       window.removeEventListener('dragover', prevent)
       window.removeEventListener('drop', drop)
     }
-  }, [])
+  }, [active])
 
   function load(p: Promise<OpenedFile | null>) {
     p.then((f) => {
@@ -391,6 +403,13 @@ export default function ConvertView({ rules, rulesRev, onRulesChanged }: Props) 
                 <option value="auto">자동 (ADDR 우선, 없으면 MODULE-PIN)</option>
                 <option value="addr">ADDR만</option>
                 <option value="module_pin">MODULE-PIN만</option>
+              </select>
+            </label>
+            <label className="opt">
+              행 순서
+              <select value={options.rowOrder} onChange={(e) => setOptions({ ...options, rowOrder: e.target.value as TransformOptions['rowOrder'] })}>
+                <option value="time">시간순</option>
+                <option value="effect">효과순 (같은 효과끼리 → 시간순)</option>
               </select>
             </label>
             <label className="opt">

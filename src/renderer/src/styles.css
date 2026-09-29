@@ -150,3 +150,8 @@ table.xl td.pos { font-family: Consolas, 'SF Mono', Menlo, monospace; }
 .input { border: 1px solid var(--border); border-radius: 5px; padding: 6px 8px; background: #fff; }
 .toggle { cursor: pointer; }
 tr.inactive td { color: #adb5bd; }
+
+/* 주소 매기기 */
+table.grid.assign th { position: sticky; top: 0; background: var(--panel); z-index: 1; padding: 8px 10px; }
+table.grid.assign td { padding: 4px 10px; }
+.input.bad { border-color: var(--danger); background: var(--danger-soft); }

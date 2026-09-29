@@ -50,3 +50,12 @@ export function parseCsv(bytes: Uint8Array, fileName: string): ParsedCsv {
   }
   return { fileName, encoding, headers, rows, lineNumbers }
 }
+
+/** 원본과 같은 인코딩으로 CSV를 다시 쓴다 (디자인 프로그램에 다시 넣을 수 있게) */
+export function serializeCsv(csv: ParsedCsv): Uint8Array {
+  const text = Papa.unparse([csv.headers, ...csv.rows], { newline: '\r\n' }) + '\r\n'
+  if (csv.encoding === 'CP949') return new Uint8Array(iconv.encode(text, 'cp949'))
+  const body = new TextEncoder().encode(text)
+  if (csv.encoding === 'UTF-8 (BOM)') return new Uint8Array([0xef, 0xbb, 0xbf, ...body])
+  return body
+}

@@ -35,6 +35,7 @@ export interface Profile {
   group_keys: ColumnKey[]
   create_empty_sheets: boolean
   single_control_sheet_naming: 'simple' | 'full'
+  row_order?: 'time' | 'effect'
 }
 
 export interface RuleSet {
@@ -50,13 +51,16 @@ export interface TransformOptions {
   groupKeys: ColumnKey[]
   createEmptySheets: boolean
   singleControlSheetNaming: 'simple' | 'full'
+  /** 결과 행 순서: 시간순(원본 등장 순서) 또는 효과순(같은 효과끼리 → 시간순) */
+  rowOrder: 'time' | 'effect'
 }
 
 export const DEFAULT_OPTIONS: TransformOptions = {
   addressSource: 'auto',
   groupKeys: ['HH', 'MM', 'SS', 'FF', 'EFFECT'],
   createEmptySheets: true,
-  singleControlSheetNaming: 'simple'
+  singleControlSheetNaming: 'simple',
+  rowOrder: 'time'
 }
 
 export interface ParsedCsv {

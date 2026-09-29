@@ -1,7 +1,7 @@
 {
   "name": "pyro-csv-organizer",
   "productName": "Pyro CSV Organizer",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "불꽃쇼 디자인 CSV를 현장용 Excel로 자동 정리하는 프로그램",
   "main": "./out/main/index.js",
   "author": "Moonwon0701",

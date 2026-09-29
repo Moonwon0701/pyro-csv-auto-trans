@@ -157,9 +157,9 @@ describe('Spec 10. Acceptance Test', () => {
       'FC-01,3,00,01,40,05,shell,5P-03,261,,,1,3 Orange Strobe'
     ])
     const s = sheet(sheets, '타상')
-    expect(s.columns).toEqual(['CUE', 'HH', 'MM', 'SS', 'FF', 'QTY', 'Effect Description', 'P-01', 'P-02', 'P-03'])
+    expect(s.columns).toEqual(['CUE', 'HH', 'MM', 'SS', 'FF', 'QTY', 'Effect Description', 'P-01', 'P-02', 'P-03', 'NOTE'])
     expect(s.rows.map((r) => r.map((c) => c.value))).toEqual([
-      ['1', '00', '01', '40', '05', '1', '3 Orange Strobe', '221', '241', '261']
+      ['1', '00', '01', '40', '05', '1', '3 Orange Strobe', '221', '241', '261', '']
     ])
   })
 })
@@ -200,6 +200,18 @@ describe('Spec 10.1 실패하면 안 되는 항목', () => {
 })
 
 describe('보조 규칙', () => {
+  it('CUE는 그룹 첫 행의 원본 CUE, 효과순 옵션은 같은 효과끼리 모은다', () => {
+    const lines = [
+      'FC-01,7,00,00,01,00,shell,3P-01,1,,,1,Zeta',
+      'FC-01,8,00,00,02,00,shell,3P-01,2,,,1,alpha',
+      'FC-01,9,00,00,03,00,shell,3P-01,3,,,1,Zeta'
+    ]
+    const time = sheet(run(lines).sheets, '타상')
+    expect(time.rows.map((r) => r[0].value)).toEqual(['7', '8', '9'])
+    const effect = sheet(run(lines, { rowOrder: 'effect' }).sheets, '타상')
+    expect(effect.rows.map((r) => r[0].value)).toEqual(['8', '7', '9'])
+  })
+
   it('시간 값 한 자리는 두 자리로 맞춤 (0 → 00)', () => {
     const { sheets } = run(['FC-01,1,0,1,40,5,shell,3P-01,221,,,1,A'])
     expect(sheet(sheets, '타상').rows[0].slice(1, 5).map((c) => c.value)).toEqual(['00', '01', '40', '05'])
@@ -210,10 +222,10 @@ describe('보조 규칙', () => {
     expect(sheet(sheets, 'FC-02 타상').columns.filter((c) => /^P-/.test(c))).toEqual(['P-01', 'P-02', 'P-03'])
   })
 
-  it('MFG, PRICE1은 결과에서 제외하고 PFT는 Effect 앞에 둔다', () => {
+  it('PFT, REF, MFG, PRICE1은 결과에서 제외', () => {
     const { sheets, analysis } = run(['FC-01,1,00,00,01,00,shell,3P-01,1,M,9.9,100,A,R'], {}, {}, 'CONTROL,CUE,HH,MM,SS,FF,TYPE,POS,ADDR,MFG,PRICE1,PFT,Effect Description,REF')
-    expect(sheet(sheets, '타상').columns).toEqual(['CUE', 'HH', 'MM', 'SS', 'FF', 'PFT', 'Effect Description', 'REF', 'P-01'])
-    expect(analysis.ignoredColumns).toEqual(['MFG', 'PRICE1'])
+    expect(sheet(sheets, '타상').columns).toEqual(['CUE', 'HH', 'MM', 'SS', 'FF', 'Effect Description', 'P-01', 'NOTE'])
+    expect(analysis.ignoredColumns).toEqual(['MFG', 'PRICE1', 'PFT', 'REF'])
   })
 
   it('POS가 비어 있으면 TYPE으로 분류하고 미배치 POS 열에 보존', () => {

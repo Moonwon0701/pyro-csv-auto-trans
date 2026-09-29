@@ -1,6 +1,7 @@
 import { OUTPUT_KEYS, PASSTHROUGH_AFTER_EFFECT, PASSTHROUGH_BEFORE_EFFECT, detectColumns } from './columns'
 import { formatPosition, parsePosition } from './position'
 import { findPositionRule, findTypeRule } from './rules'
+import { normalizeAddress } from './assign'
 import {
   CATEGORIES,
   CATEGORY_PREFIX,
@@ -25,6 +26,8 @@ const MAX_DETAILS = 100
 const NO_CONTROL = 'NO-CONTROL'
 export const MISSING_ADDRESS_TEXT = '주소없음'
 export const UNPLACED_COLUMN = '미배치 POS'
+/** 현장 메모용 빈 열 */
+export const NOTE_COLUMN = 'NOTE'
 
 interface PositionSlot {
   values: string[]
@@ -37,6 +40,10 @@ interface Group {
   positions: Map<number, PositionSlot>
   unplaced: string[]
   sourceRows: number
+  /** 그룹 첫 행의 원본 CUE */
+  cue: string
+  /** 첫 등장 순서 */
+  order: number
 }
 
 interface SheetBucket {
@@ -65,6 +72,10 @@ class IssueCollector {
       issue.details ??= []
       if (issue.details.length < MAX_DETAILS) issue.details.push(opts.detail)
     }
+  }
+
+  remove(code: string) {
+    this.map.delete(code)
   }
 
   list(): Issue[] {
@@ -138,6 +149,8 @@ export function transform(
   const prefixInfo = new Map<string, { rowCount: number; examples: string[]; typeVotes: Map<Category, number> }>()
   const unclassified: { row: string[]; line: number }[] = []
   const addrSummary = { addr: 0, modulePin: 0, none: 0 }
+  /** Control별 주소 → 쓰인 곳(POS@시간) */
+  const addressUse = new Map<string, Map<string, Set<string>>>()
 
   csv.rows.forEach((row, i) => {
     const line = csv.lineNumbers[i]
@@ -210,6 +223,14 @@ export function transform(
       issues.add('NO_ADDRESS', 'warning', `주소 값이 없는 행이 있습니다. 위치 셀에 "${MISSING_ADDRESS_TEXT}"로 표시합니다.`, { line })
     }
 
+    if (address) {
+      if (!addressUse.has(control)) addressUse.set(control, new Map())
+      const byAddr = addressUse.get(control)!
+      const norm = normalizeAddress(address)
+      if (!byAddr.has(norm)) byAddr.set(norm, new Set())
+      byAddr.get(norm)!.add(`${posRaw || '(POS 없음)'}@${TIME_KEYS.map((k) => getKey(row, k)).join(':')}`)
+    }
+
     if (['HH', 'MM', 'SS', 'FF'].some((k) => cols.has(k as ColumnKey) && get(row, k as ColumnKey) === '')) {
       issues.add('MISSING_TIME', 'warning', 'HH/MM/SS/FF 값이 비어 있는 행이 있습니다.', { line })
     }
@@ -230,7 +251,7 @@ export function transform(
     if (!group) {
       const key: Group['key'] = {}
       for (const k of [...TIME_KEYS, 'EFFECT'] as ColumnKey[]) key[k] = getKey(row, k)
-      group = { key, extras: new Map(), positions: new Map(), unplaced: [], sourceRows: 0 }
+      group = { key, extras: new Map(), positions: new Map(), unplaced: [], sourceRows: 0, cue: get(row, 'CUE'), order: bucket.groups.size }
       bucket.groups.set(groupKey, group)
     }
     group.sourceRows++
@@ -256,6 +277,22 @@ export function transform(
       'warning',
       '이 CSV에는 주소(ADDR 또는 MODULE-PIN)가 하나도 없습니다. 주소를 매기기 전 원본 파일인지 확인하세요.'
     )
+  }
+
+  for (const [control, byAddr] of addressUse) {
+    for (const [addr, uses] of byAddr) {
+      const positions = new Set([...uses].map((u) => u.split('@')[0]))
+      if (positions.size > 1) {
+        issues.add('DUPLICATE_ADDRESS', 'warning', '같은 주소를 서로 다른 위치가 함께 쓰고 있습니다. 다른 장비가 아니라면 주소 오류입니다.', {
+          detail: `${control ? control + ' ' : ''}${addr}: ${[...uses].join(', ')}`
+        })
+      }
+    }
+  }
+
+  if (cols.has('CONTROL') && controlCounts.size === 1 && controlCounts.has('')) {
+    issues.remove('EMPTY_CONTROL')
+    issues.add('NO_CONTROL_VALUES', 'info', 'CONTROL 값이 모두 비어 있어 단일 Control로 처리합니다.')
   }
 
   // ---- 미등록 prefix / 매핑 표 ----
@@ -335,6 +372,11 @@ export function transform(
 
   function buildSheet(name: string, control: string, category: Category, bucket?: SheetBucket): SheetModel {
     const groups = bucket ? [...bucket.groups.values()] : []
+    if (opts.rowOrder === 'effect') {
+      // 현장 정리 방식: 같은 효과(제품)끼리 모아서, 그 안에서는 시간순
+      const ef = (g: Group) => (g.key.EFFECT ?? '').toLowerCase()
+      groups.sort((a, b) => (ef(a) < ef(b) ? -1 : ef(a) > ef(b) ? 1 : 0) || a.order - b.order)
+    }
     const prefix = bucket?.outputPrefix ?? CATEGORY_PREFIX[category]
     const numbers = Array.from({ length: maxPosition.get(category) ?? 0 }, (_, i) => i + 1)
     const hasUnplaced = groups.some((g) => g.unplaced.length > 0)
@@ -347,11 +389,12 @@ export function transform(
       'CUE',
       ...[...lead, ...before, ...effect, ...after].map(headerOf),
       ...numbers.map((n) => formatPosition(prefix, n)),
-      ...(hasUnplaced ? [UNPLACED_COLUMN] : [])
+      ...(hasUnplaced ? [UNPLACED_COLUMN] : []),
+      NOTE_COLUMN
     ]
 
     const rows: SheetCell[][] = groups.map((g, idx) => {
-      const cells: SheetCell[] = [{ value: String(idx + 1) }]
+      const cells: SheetCell[] = [{ value: g.cue || String(idx + 1) }]
       for (const k of lead) cells.push({ value: g.key[k] ?? '' })
       for (const k of before) cells.push({ value: (g.extras.get(k) ?? []).join(', ') })
       for (const k of effect) cells.push({ value: g.key[k] ?? '' })
@@ -371,6 +414,7 @@ export function transform(
         }
       }
       if (hasUnplaced) cells.push({ value: g.unplaced.join(', ') })
+      cells.push({ value: '' })
       return cells
     })
 

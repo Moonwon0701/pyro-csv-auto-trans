@@ -34,10 +34,10 @@ export function detectColumns(headers: string[]): Map<ColumnKey, number> {
 }
 
 /** 결과 시트에 그대로 옮겨 적는 부가 컬럼 (Spec 6.3 순서) */
-export const PASSTHROUGH_BEFORE_EFFECT: ColumnKey[] = ['QTY', 'EVENT', 'PFT']
-export const PASSTHROUGH_AFTER_EFFECT: ColumnKey[] = ['REF', 'PAN', 'TILT']
+export const PASSTHROUGH_BEFORE_EFFECT: ColumnKey[] = ['QTY', 'EVENT']
+export const PASSTHROUGH_AFTER_EFFECT: ColumnKey[] = ['PAN', 'TILT']
 
-/** 결과에 쓰이는 컬럼 (MFG, PRICE1 등은 현장용 결과에서 제외) */
+/** 결과에 쓰이는 컬럼 (PFT, REF, MFG, PRICE1 등은 현장용 결과에서 제외) */
 export const OUTPUT_KEYS: ColumnKey[] = [
   'CONTROL', 'CUE', 'HH', 'MM', 'SS', 'FF', 'TYPE', 'POS', 'ADDR', 'MODULE', 'PIN', 'EFFECT',
   ...PASSTHROUGH_BEFORE_EFFECT, ...PASSTHROUGH_AFTER_EFFECT

@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { RulesState } from '../../main/rules-store'
 import type { UpdateStatus } from '../../main/updates'
+import type { OpenedFile } from '../../preload'
+import AssignView from './AssignView'
 import ConvertView from './ConvertView'
 import RulesView from './RulesView'
 
-type Tab = 'convert' | 'rules'
+type Tab = 'assign' | 'convert' | 'rules'
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>(location.hash === '#rules' ? 'rules' : 'convert')
+  const [tab, setTab] = useState<Tab>((['assign', 'rules'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'convert') as Tab)
   const [rules, setRules] = useState<RulesState | null>(null)
   const [version, setVersion] = useState('')
   const [update, setUpdate] = useState<UpdateStatus | null>(null)
   /** Rule이 바뀔 때마다 증가시켜 변환 화면이 다시 계산하도록 한다 */
   const [rulesRev, setRulesRev] = useState(0)
+  const [handoff, setHandoff] = useState<OpenedFile | null>(null)
 
   useEffect(() => {
     window.api.getRules().then(setRules)
@@ -32,8 +35,11 @@ export default function App() {
           <span className="brand-mark">✦</span>불꽃쇼 CSV 자동 정리
         </div>
         <nav className="tabs">
+          <button className={`tab ${tab === 'assign' ? 'active' : ''}`} onClick={() => setTab('assign')}>
+            ① 주소 매기기
+          </button>
           <button className={`tab ${tab === 'convert' ? 'active' : ''}`} onClick={() => setTab('convert')}>
-            변환
+            ② 시트 정리
           </button>
           <button className={`tab ${tab === 'rules' ? 'active' : ''}`} onClick={() => setTab('rules')}>
             Rule 관리
@@ -61,8 +67,17 @@ export default function App() {
       )}
 
       <main className="content">
+        <div style={{ display: tab === 'assign' ? 'contents' : 'none' }}>
+          <AssignView
+            active={tab === 'assign'}
+            onSendToConvert={(f) => {
+              setHandoff(f)
+              setTab('convert')
+            }}
+          />
+        </div>
         <div style={{ display: tab === 'convert' ? 'contents' : 'none' }}>
-          <ConvertView rules={rules} rulesRev={rulesRev} onRulesChanged={onRulesChanged} />
+          <ConvertView active={tab === 'convert'} rules={rules} rulesRev={rulesRev} onRulesChanged={onRulesChanged} incoming={handoff} />
         </div>
         {tab === 'rules' && rules && <RulesView rules={rules} onRulesChanged={onRulesChanged} />}
       </main>
