@@ -36,6 +36,7 @@ export interface Profile {
   create_empty_sheets: boolean
   single_control_sheet_naming: 'simple' | 'full'
   row_order?: 'time' | 'effect'
+  include_source_sheet?: boolean
 }
 
 export interface RuleSet {
@@ -53,6 +54,8 @@ export interface TransformOptions {
   singleControlSheetNaming: 'simple' | 'full'
   /** 결과 행 순서: 시간순(원본 등장 순서) 또는 효과순(같은 효과끼리 → 시간순) */
   rowOrder: 'time' | 'effect'
+  /** 맨 앞에 원본(주소 매긴) 데이터 전체를 시트로 넣는다 */
+  includeSourceSheet: boolean
 }
 
 export const DEFAULT_OPTIONS: TransformOptions = {
@@ -60,7 +63,8 @@ export const DEFAULT_OPTIONS: TransformOptions = {
   groupKeys: ['HH', 'MM', 'SS', 'FF', 'EFFECT'],
   createEmptySheets: true,
   singleControlSheetNaming: 'simple',
-  rowOrder: 'time'
+  rowOrder: 'time',
+  includeSourceSheet: false
 }
 
 export interface ParsedCsv {
@@ -108,7 +112,9 @@ export interface SheetCell {
 export interface SheetModel {
   name: string
   control: string
-  category: Category | '미분류'
+  category: Category | '미분류' | '원본'
+  /** true면 제목·요약 줄 없이 1행이 헤더 */
+  plain?: boolean
   /** Excel 1행: 제목 */
   title: string
   /** Excel 2행: 원본 행 수·병합 기준 요약 */

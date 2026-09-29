@@ -28,6 +28,7 @@ export const MISSING_ADDRESS_TEXT = '주소없음'
 export const UNPLACED_COLUMN = '미배치 POS'
 /** 현장 메모용 빈 열 */
 export const NOTE_COLUMN = 'NOTE'
+export const SOURCE_SHEET_NAME = '원본 데이터'
 
 interface PositionSlot {
   values: string[]
@@ -336,6 +337,19 @@ export function transform(
   const single = controls.length <= 1
   const usedNames = new Set<string>()
   const sheets: SheetModel[] = []
+  if (opts.includeSourceSheet) {
+    sheets.push({
+      name: sanitizeSheetName(SOURCE_SHEET_NAME, usedNames),
+      control: '',
+      category: '원본',
+      title: '',
+      summary: '',
+      columns: csv.headers,
+      rows: csv.rows.map((r) => r.map((v) => ({ value: v }))),
+      sourceRowCount: csv.rows.length,
+      plain: true
+    })
+  }
   const maxPosition = new Map<Category, number>()
   for (const b of buckets.values()) {
     for (const g of b.groups.values()) {

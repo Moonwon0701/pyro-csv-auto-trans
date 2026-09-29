@@ -200,6 +200,19 @@ describe('Spec 10.1 실패하면 안 되는 항목', () => {
 })
 
 describe('보조 규칙', () => {
+  it('원본 데이터 시트 옵션: 맨 앞에 원본 전체, xlsx에서는 1행이 헤더', async () => {
+    const lines = ['FC-01,1,00,00,01,00,shell,3P-01,047,,,1,A']
+    expect(run(lines).sheets.some((s) => s.category === '원본')).toBe(false)
+    const { sheets } = run(lines, { includeSourceSheet: true })
+    expect(sheets[0].name).toBe('원본 데이터')
+    expect(sheets[0].columns).toEqual(HEADER.split(','))
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(Buffer.from(await buildXlsx(sheets)) as unknown as ExcelJS.Buffer)
+    const ws = wb.getWorksheet('원본 데이터')!
+    expect(ws.getCell('A1').value).toBe('CONTROL')
+    expect(ws.getCell('I2').value).toBe('047')
+  })
+
   it('CUE는 그룹 첫 행의 원본 CUE, 효과순 옵션은 같은 효과끼리 모은다', () => {
     const lines = [
       'FC-01,7,00,00,01,00,shell,3P-01,1,,,1,Zeta',

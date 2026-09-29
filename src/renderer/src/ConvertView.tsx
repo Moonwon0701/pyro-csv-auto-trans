@@ -32,7 +32,8 @@ function optionsFromProfile(p: Profile | undefined): TransformOptions {
     groupKeys: p.group_keys?.length ? p.group_keys : DEFAULT_OPTIONS.groupKeys,
     createEmptySheets: p.create_empty_sheets ?? true,
     singleControlSheetNaming: p.single_control_sheet_naming ?? 'simple',
-    rowOrder: p.row_order ?? 'time'
+    rowOrder: p.row_order ?? 'time',
+    includeSourceSheet: p.include_source_sheet ?? false
   }
 }
 
@@ -411,6 +412,14 @@ export default function ConvertView({ active, rules, rulesRev, onRulesChanged, i
                 <option value="time">시간순</option>
                 <option value="effect">효과순 (같은 효과끼리 → 시간순)</option>
               </select>
+            </label>
+            <label className="opt">
+              원본 데이터 시트 포함 (맨 앞)
+              <input
+                type="checkbox"
+                checked={options.includeSourceSheet}
+                onChange={(e) => setOptions({ ...options, includeSourceSheet: e.target.checked })}
+              />
             </label>
             <label className="opt">
               데이터 없는 시트도 만들기

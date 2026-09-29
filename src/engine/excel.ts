@@ -19,9 +19,11 @@ export async function buildXlsx(sheets: SheetModel[]): Promise<Uint8Array> {
   wb.created = new Date()
 
   for (const sheet of sheets) {
-    const ws = wb.addWorksheet(sheet.name, { views: [{ state: 'frozen', ySplit: HEADER_ROW }] })
-    ws.addRow([sheet.title]).getCell(1).font = { bold: true, size: 14 }
-    ws.addRow([sheet.summary]).getCell(1).font = { italic: true, color: { argb: 'FF666666' } }
+    const ws = wb.addWorksheet(sheet.name, { views: [{ state: 'frozen', ySplit: sheet.plain ? 1 : HEADER_ROW }] })
+    if (!sheet.plain) {
+      ws.addRow([sheet.title]).getCell(1).font = { bold: true, size: 14 }
+      ws.addRow([sheet.summary]).getCell(1).font = { italic: true, color: { argb: 'FF666666' } }
+    }
     const header = ws.addRow(sheet.columns)
     header.eachCell((c) => {
       c.font = { bold: true }
@@ -41,7 +43,7 @@ export async function buildXlsx(sheets: SheetModel[]): Promise<Uint8Array> {
         widths[i] = Math.min(60, Math.max(widths[i], displayWidth(cell.value) + 2))
       })
     }
-    if (sheet.rows.length === 0) ws.addRow([EMPTY_TEXT]).getCell(1).font = { color: { argb: 'FF999999' } }
+    if (sheet.rows.length === 0 && !sheet.plain) ws.addRow([EMPTY_TEXT]).getCell(1).font = { color: { argb: 'FF999999' } }
     widths.forEach((w, i) => (ws.getColumn(i + 1).width = w))
   }
 
