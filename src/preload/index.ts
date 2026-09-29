@@ -33,6 +33,7 @@ const api = {
   assignRun: (opts: AssignOptions): Promise<AssignRun> => ipcRenderer.invoke('assign:run', opts),
   assignSave: (opts: AssignOptions): Promise<string | null> => ipcRenderer.invoke('assign:save', opts),
   assignToConvert: (opts: AssignOptions): Promise<OpenedFile> => ipcRenderer.invoke('assign:toConvert', opts),
+  tutorialSample: (): Promise<AssignSource> => ipcRenderer.invoke('tutorial:sample'),
   showItem: (path: string): Promise<void> => ipcRenderer.invoke('shell:showItem', path),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('shell:openExternal', url),
   getRules: (): Promise<RulesState> => ipcRenderer.invoke('rules:get'),

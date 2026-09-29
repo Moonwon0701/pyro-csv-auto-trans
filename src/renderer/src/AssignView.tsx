@@ -2,16 +2,21 @@ import { useEffect, useMemo, useState } from 'react'
 import type { AssignOptions, AssignPlanEntry, SortMode } from '@engine/assign'
 import type { Issue } from '@engine/types'
 import type { AssignRun, AssignSource, OpenedFile } from '../../preload'
+import { TutorialBanner } from './Tutorial'
 
 interface Props {
   active: boolean
+  tutorial: boolean
+  onExitTutorial: () => void
+  /** 튜토리얼 샘플 등 밖에서 열어준 원본 */
+  incoming: AssignSource | null
   /** 주소를 매긴 결과를 시트 정리 화면으로 넘긴다 */
   onSendToConvert: (f: OpenedFile) => void
 }
 
 const keyOf = (control: string, pos: string) => `${control}\u0000${pos}`
 
-export default function AssignView({ active, onSendToConvert }: Props) {
+export default function AssignView({ active, tutorial, onExitTutorial, incoming, onSendToConvert }: Props) {
   const [source, setSource] = useState<AssignSource | null>(null)
   const [sortMode, setSortMode] = useState<SortMode>('effect')
   const [startModule, setStartModule] = useState('01')
@@ -26,6 +31,10 @@ export default function AssignView({ active, onSendToConvert }: Props) {
     [source, ranges]
   )
   const opts: AssignOptions = { sortMode, plan }
+
+  useEffect(() => {
+    if (incoming) load(Promise.resolve(incoming))
+  }, [incoming])
 
   useEffect(() => {
     window.api.onAssignOpened((s) => load(Promise.resolve(s)))
@@ -115,6 +124,12 @@ export default function AssignView({ active, onSendToConvert }: Props) {
 
   return (
     <>
+      {tutorial && (
+        <TutorialBanner step="1/3" onExit={onExitTutorial}>
+          위치(POS)마다 주소 범위가 <b>자동으로 제안</b>됐어요. 오른쪽 표에서 위치별 범위와 배정 결과를 훑어본 뒤, 아래{' '}
+          <b>바로 시트 정리 →</b>를 누르세요.
+        </TutorialBanner>
+      )}
       <div className="work">
         <div className="side">
           <div className="card file-card">

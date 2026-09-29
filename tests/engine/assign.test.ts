@@ -91,3 +91,19 @@ describe('주소 배정', () => {
     expect(r.csv.rows[0].at(-1)).toBe('100')
   })
 })
+
+describe('튜토리얼 샘플', () => {
+  it('자동 배정 → 시트 정리까지 막힘 없이 진행되고, 7P만 미등록으로 묻는다', async () => {
+    const { transform, DEFAULT_OPTIONS } = await import('../../src/engine')
+    const raw = parseCsv(readFileSync(resolve(__dirname, '../../resources/tutorial-sample.csv')), 'tutorial.csv')
+    const assigned = assignAddresses(raw, { sortMode: 'effect', plan: proposePlan(listPositions(raw, RULES)) })
+    expect(assigned.blocked).toBe(false)
+    expect(assigned.issues).toEqual([])
+    const before = transform(assigned.csv, RULES, {}, DEFAULT_OPTIONS)
+    expect(before.analysis.prefixMappings.filter((m) => m.status === 'unknown').map((m) => m.prefix)).toEqual(['7P'])
+    const after = transform(assigned.csv, RULES, { '7P': '타상' }, DEFAULT_OPTIONS)
+    expect(after.analysis.blocked).toBe(false)
+    expect(after.sheets.map((s) => s.name)).toEqual(['FC-01 타상', 'FC-01 연발', 'FC-01 단발', 'FC-02 타상', 'FC-02 연발', 'FC-02 단발'])
+    expect(after.analysis.issues.filter((i) => i.severity !== 'info')).toEqual([])
+  })
+})

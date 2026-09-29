@@ -1,0 +1,61 @@
+CUE,HH,MM,SS,FF,Event Description,PFT,ADDR,CONTROL,MODULE,PIN,CGHZ,POS,QTY,CAL,TYPE,DUR,Effect Description,REF,MFG,PRICE1,CUSTOM1,CUSTOM2,CUSTOM3,CUSTOM4,CUSTOM5,PAN,TILT
+0,00,00,05,00,,,,FC-02,,,,C-01,1,30,cake,200,25 shot fan red to silver,DEMO-C101,,,,,,,,,90
+1,00,00,05,00,,,,FC-02,,,,CF-03,1,30,cake,200,25 shot fan red to silver,DEMO-C101,,,,,,,,,90
+2,00,00,08,00,,,,FC-02,,,,S-01,1,45,single_shot,200,45mm red comet,DEMO-M101,,,,,,,,,-30
+3,00,00,08,03,,,,FC-02,,,,S-03,1,45,single_shot,200,45mm red comet,DEMO-M101,,,,,,,,,0
+4,00,00,08,06,,,,FC-02,,,,S-05,1,45,single_shot,200,45mm red comet,DEMO-M101,,,,,,,,,30
+5,00,00,10,00,오프닝,,,FC-01,,,,3P-01,1,75,shell,200,3 red peony,DEMO-S301,,,,,,,,,90
+6,00,00,10,00,오프닝,,,FC-01,,,,3P-03,1,75,shell,200,3 red peony,DEMO-S301,,,,,,,,,90
+7,00,00,10,00,오프닝,,,FC-01,,,,3P-05,1,75,shell,200,3 red peony,DEMO-S301,,,,,,,,,90
+8,00,00,12,15,오프닝,,,FC-01,,,,3P-02,1,75,shell,200,3 blue chrysanthemum,DEMO-S302,,,,,,,,,90
+9,00,00,12,15,오프닝,,,FC-01,,,,3P-04,1,75,shell,200,3 blue chrysanthemum,DEMO-S302,,,,,,,,,90
+10,00,00,15,00,오프닝,,,FC-01,,,,4P-01,1,100,shell,200,4 gold willow,DEMO-S401,,,,,,,,,90
+11,00,00,15,00,오프닝,,,FC-01,,,,4P-02,1,100,shell,200,4 gold willow,DEMO-S401,,,,,,,,,90
+12,00,00,15,00,오프닝,,,FC-01,,,,4P-03,1,100,shell,200,4 gold willow,DEMO-S401,,,,,,,,,90
+13,00,00,15,00,오프닝,,,FC-01,,,,4P-04,1,100,shell,200,4 gold willow,DEMO-S401,,,,,,,,,90
+14,00,00,15,00,오프닝,,,FC-01,,,,4P-05,1,100,shell,200,4 gold willow,DEMO-S401,,,,,,,,,90
+15,00,00,18,00,,,,FC-02,,,,G-02,1,45,single_shot,200,45mm blue mine,DEMO-M102,,,,,,,,,-15
+16,00,00,18,00,,,,FC-02,,,,G-04,1,45,single_shot,200,45mm blue mine,DEMO-M102,,,,,,,,,15
+17,00,00,20,10,,,,FC-01,,,,3P-01,1,75,shell,200,3 red peony,DEMO-S301,,,,,,,,,90
+18,00,00,20,10,,,,FC-01,,,,3P-03,1,75,shell,200,3 red peony,DEMO-S301,,,,,,,,,90
+19,00,00,20,10,,,,FC-01,,,,3P-05,1,75,shell,200,3 red peony,DEMO-S301,,,,,,,,,90
+20,00,00,24,05,,,,FC-01,,,,5P-01,1,125,shell,200,5 white strobe,DEMO-S501,,,,,,,,,90
+21,00,00,24,05,,,,FC-01,,,,5P-03,1,125,shell,200,5 white strobe,DEMO-S501,,,,,,,,,90
+22,00,00,24,05,,,,FC-01,,,,5P-05,1,125,shell,200,5 white strobe,DEMO-S501,,,,,,,,,90
+23,00,00,28,00,,,,FC-02,,,,CK-02,1,30,cake,200,100 shot z-shape gold,DEMO-C102,,,,,,,,,90
+24,00,00,30,00,,,,FC-01,,,,4P-02,1,100,shell,200,4 green palm,DEMO-S402,,,,,,,,,90
+25,00,00,30,00,,,,FC-01,,,,4P-04,1,100,shell,200,4 green palm,DEMO-S402,,,,,,,,,90
+26,00,00,35,20,,,,FC-01,,,,3P-01,1,75,shell,200,3 silver crackling,DEMO-S303,,,,,,,,,90
+27,00,00,35,20,,,,FC-01,,,,3P-02,1,75,shell,200,3 silver crackling,DEMO-S303,,,,,,,,,90
+28,00,00,35,20,,,,FC-01,,,,3P-03,1,75,shell,200,3 silver crackling,DEMO-S303,,,,,,,,,90
+29,00,00,35,20,,,,FC-01,,,,3P-04,1,75,shell,200,3 silver crackling,DEMO-S303,,,,,,,,,90
+30,00,00,35,20,,,,FC-01,,,,3P-05,1,75,shell,200,3 silver crackling,DEMO-S303,,,,,,,,,90
+31,00,00,38,12,,,,FC-02,,,,H1-01,1,45,single_shot,200,45mm white strobe comet,DEMO-M103,,,,,,,,,-60
+32,00,00,38,12,,,,FC-02,,,,H1-02,1,45,single_shot,200,45mm white strobe comet,DEMO-M103,,,,,,,,,-30
+33,00,00,38,12,,,,FC-02,,,,H1-03,1,45,single_shot,200,45mm white strobe comet,DEMO-M103,,,,,,,,,0
+34,00,00,38,12,,,,FC-02,,,,H1-04,1,45,single_shot,200,45mm white strobe comet,DEMO-M103,,,,,,,,,30
+35,00,00,38,12,,,,FC-02,,,,H1-05,1,45,single_shot,200,45mm white strobe comet,DEMO-M103,,,,,,,,,60
+36,00,00,41,00,,,,FC-01,,,,5P-01,1,125,shell,200,5 purple peony,DEMO-S502,,,,,,,,,90
+37,00,00,41,00,,,,FC-01,,,,5P-05,1,125,shell,200,5 purple peony,DEMO-S502,,,,,,,,,90
+38,00,00,45,15,,,,FC-01,,,,4P-01,1,100,shell,200,4 gold willow,DEMO-S401,,,,,,,,,90
+39,00,00,45,15,,,,FC-01,,,,4P-02,1,100,shell,200,4 gold willow,DEMO-S401,,,,,,,,,90
+40,00,00,45,15,,,,FC-01,,,,4P-03,1,100,shell,200,4 gold willow,DEMO-S401,,,,,,,,,90
+41,00,00,45,15,,,,FC-01,,,,4P-04,1,100,shell,200,4 gold willow,DEMO-S401,,,,,,,,,90
+42,00,00,45,15,,,,FC-01,,,,4P-05,1,100,shell,200,4 gold willow,DEMO-S401,,,,,,,,,90
+43,00,00,50,00,,,,FC-01,,,,7P-01,1,175,shell,200,7 golden kamuro,DEMO-S701,,,,,,,,,90
+44,00,00,52,10,,,,FC-02,,,,C-01,1,30,cake,200,49 shot crossette,DEMO-C103,,,,,,,,,90
+45,00,00,52,10,,,,FC-02,,,,C-03,1,30,cake,200,49 shot crossette,DEMO-C103,,,,,,,,,90
+46,00,00,55,00,,,,FC-01,,,,7P-01,1,175,shell,200,7 golden kamuro,DEMO-S701,,,,,,,,,90
+47,00,00,57,00,,,,FC-02,,,,TX-01,1,45,single_shot,200,45mm gold glitter mine,DEMO-M104,,,,,,,,,-45
+48,00,00,57,00,,,,FC-02,,,,TX-05,1,45,single_shot,200,45mm gold glitter mine,DEMO-M104,,,,,,,,,45
+49,00,01,00,00,피날레,,,FC-01,,,,3P-01,1,75,shell,200,3 red peony,DEMO-S301,,,,,,,,,90
+50,00,01,00,00,피날레,,,FC-01,,,,3P-02,1,75,shell,200,3 red peony,DEMO-S301,,,,,,,,,90
+51,00,01,00,00,피날레,,,FC-01,,,,3P-03,1,75,shell,200,3 red peony,DEMO-S301,,,,,,,,,90
+52,00,01,00,00,피날레,,,FC-01,,,,3P-04,1,75,shell,200,3 red peony,DEMO-S301,,,,,,,,,90
+53,00,01,00,00,피날레,,,FC-01,,,,3P-05,1,75,shell,200,3 red peony,DEMO-S301,,,,,,,,,90
+54,00,01,00,00,피날레,,,FC-01,,,,4P-01,1,100,shell,200,4 gold willow,DEMO-S401,,,,,,,,,90
+55,00,01,00,00,피날레,,,FC-01,,,,4P-03,1,100,shell,200,4 gold willow,DEMO-S401,,,,,,,,,90
+56,00,01,00,00,피날레,,,FC-01,,,,4P-05,1,100,shell,200,4 gold willow,DEMO-S401,,,,,,,,,90
+57,00,01,00,00,피날레,,,FC-01,,,,5P-01,1,125,shell,200,5 white strobe,DEMO-S501,,,,,,,,,90
+58,00,01,00,00,피날레,,,FC-01,,,,5P-03,1,125,shell,200,5 white strobe,DEMO-S501,,,,,,,,,90
+59,00,01,00,00,피날레,,,FC-01,,,,5P-05,1,125,shell,200,5 white strobe,DEMO-S501,,,,,,,,,90

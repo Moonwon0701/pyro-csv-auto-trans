@@ -6,6 +6,9 @@ directories:
   output: dist
 files:
   - out/**/*
+extraResources:
+  - from: resources/tutorial-sample.csv
+    to: tutorial-sample.csv
 win:
   target:
     - target: nsis

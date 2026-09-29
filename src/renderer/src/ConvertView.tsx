@@ -13,6 +13,7 @@ import {
 import type { RulesState } from '../../main/rules-store'
 import type { OpenedFile } from '../../preload'
 import SheetPreview from './SheetPreview'
+import { TutorialBanner } from './Tutorial'
 
 interface Props {
   active: boolean
@@ -21,6 +22,8 @@ interface Props {
   onRulesChanged: (s: RulesState) => void
   /** 주소 매기기 화면에서 넘어온 파일 */
   incoming: OpenedFile | null
+  tutorial: boolean
+  onExitTutorial: () => void
 }
 
 const RESOLUTIONS: Resolution[] = [...CATEGORIES, EXCLUDE]
@@ -37,7 +40,7 @@ function optionsFromProfile(p: Profile | undefined): TransformOptions {
   }
 }
 
-export default function ConvertView({ active, rules, rulesRev, onRulesChanged, incoming }: Props) {
+export default function ConvertView({ active, rules, rulesRev, onRulesChanged, incoming, tutorial, onExitTutorial }: Props) {
   const [file, setFile] = useState<OpenedFile | null>(null)
   const [result, setResult] = useState<TransformResult | null>(null)
   const [resolutions, setResolutions] = useState<Record<string, Resolution>>({})
@@ -122,7 +125,8 @@ export default function ConvertView({ active, rules, rulesRev, onRulesChanged, i
         return
       }
       // 체크된 신규 Prefix를 내 PC Rule에 저장
-      const toSave = pendingPrefixes.filter((m) => m.status === 'resolved' && (saveToMaster[m.prefix] ?? true))
+      // 튜토리얼 중에는 Rule을 저장하지 않는다
+      const toSave = tutorial ? [] : pendingPrefixes.filter((m) => m.status === 'resolved' && (saveToMaster[m.prefix] ?? true))
       if (toSave.length && rules) {
         const now = new Date().toISOString()
         const added: PositionRule[] = toSave.map((m) => ({
@@ -168,8 +172,24 @@ export default function ConvertView({ active, rules, rulesRev, onRulesChanged, i
   a?.issues.forEach((i) => (issueCounts[i.severity] += 1))
   const singleControl = (a?.controls.length ?? 0) <= 1
 
+  const tutorialBanner = !tutorial ? null : unresolved.length > 0 ? (
+    <TutorialBanner step="2/3" onExit={onExitTutorial}>
+      처음 보는 Prefix <span className="mono">{unresolved.map((m) => m.prefix + '-*').join(', ')}</span>가 있어서 Excel 생성이 막혀 있어요. 왼쪽{' '}
+      <b>빨간 상자</b>에서 분류를 고르세요. (샘플의 7P는 7인치 타상이에요)
+    </TutorialBanner>
+  ) : status.kind === 'ok' ? (
+    <TutorialBanner step="완료" onExit={onExitTutorial}>
+      🎉 끝! 아래 <b>폴더 열기</b>로 만든 Excel을 확인해 보세요. 이제 실제 CSV로 똑같이 하면 됩니다.
+    </TutorialBanner>
+  ) : (
+    <TutorialBanner step="3/3" onExit={onExitTutorial}>
+      오른쪽 미리보기에서 <b>시트 탭</b>을 눌러 결과를 확인하고(같은 시간·같은 효과는 한 줄로 합쳐져요), 아래 <b>Excel 생성</b>을 누르세요.
+    </TutorialBanner>
+  )
+
   return (
     <>
+      {tutorialBanner}
       <div className="work">
         <div className="side">
           <div className="card file-card">
@@ -290,7 +310,9 @@ export default function ConvertView({ active, rules, rulesRev, onRulesChanged, i
                       <td style={{ textAlign: 'center' }}>
                         <input
                           type="checkbox"
-                          checked={saveToMaster[m.prefix] ?? true}
+                          checked={!tutorial && (saveToMaster[m.prefix] ?? true)}
+                          disabled={tutorial}
+                          title={tutorial ? '튜토리얼 중에는 Rule을 저장하지 않습니다' : undefined}
                           onChange={(e) => setSaveToMaster((s) => ({ ...s, [m.prefix]: e.target.checked }))}
                         />
                       </td>

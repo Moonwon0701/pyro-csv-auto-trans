@@ -1,5 +1,5 @@
 import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron'
-import { existsSync, readFileSync, writeFileSync } from 'fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { basename, dirname, extname, join } from 'path'
 import {
   assignAddresses,
@@ -59,6 +59,11 @@ function createWindow() {
     }
     // 개발용: PYRO_CAPTURE=경로.png 이면 화면을 캡처하고 종료
     const capture = process.env.PYRO_CAPTURE
+    // 개발용: PYRO_EVAL 스크립트를 화면에서 실행 (클릭 흐름 검증용)
+    const script = process.env.PYRO_EVAL
+    if (script && capture) {
+      setTimeout(() => win!.webContents.executeJavaScript(script).catch(() => undefined), 2500)
+    }
     if (capture) {
       setTimeout(async () => {
         const img = await win!.webContents.capturePage()
@@ -165,6 +170,18 @@ ipcMain.handle('assign:toConvert', (_e, opts: AssignOptions) => {
   const csv = { ...result.csv, fileName: addrFileName(src) }
   current = { path: join(dirname(src), csv.fileName), csv }
   return { path: current.path, fileName: csv.fileName, encoding: csv.encoding, rows: csv.rows.length }
+})
+
+/** 튜토리얼: 앱에 들어 있는 가상 샘플을 사용자 폴더로 복사해서 ① 화면에 연다 */
+ipcMain.handle('tutorial:sample', () => {
+  const bundled = app.isPackaged
+    ? join(process.resourcesPath, 'tutorial-sample.csv')
+    : join(app.getAppPath(), 'resources', 'tutorial-sample.csv')
+  const dir = join(app.getPath('userData'), 'tutorial')
+  mkdirSync(dir, { recursive: true })
+  const target = join(dir, '튜토리얼_샘플.csv')
+  copyFileSync(bundled, target)
+  return openAssignSource(target)
 })
 
 ipcMain.handle('shell:showItem', (_e, path: string) => shell.showItemInFolder(path))
