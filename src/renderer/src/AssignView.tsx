@@ -33,7 +33,7 @@ export default function AssignView({ active, tutorial, onExitTutorial, incoming,
   const opts: AssignOptions = { sortMode, plan }
 
   useEffect(() => {
-    if (incoming) load(Promise.resolve(incoming))
+    if (incoming) load(Promise.resolve(incoming), false)
   }, [incoming])
 
   useEffect(() => {
@@ -70,9 +70,11 @@ export default function AssignView({ active, tutorial, onExitTutorial, incoming,
     }
   }, [source, sortMode, plan])
 
-  function load(p: Promise<AssignSource | null>) {
+  /** fromUser: 사용자가 직접 연 파일이면 튜토리얼을 끝낸다 */
+  function load(p: Promise<AssignSource | null>, fromUser = true) {
     p.then(async (s) => {
       if (!s) return
+      if (fromUser) onExitTutorial()
       setSource(s)
       setRun(null)
       setStatus({ kind: '', text: '' })

@@ -78,7 +78,7 @@ export default function ConvertView({ active, rules, rulesRev, onRulesChanged, i
   }, [])
 
   useEffect(() => {
-    if (incoming) load(Promise.resolve(incoming))
+    if (incoming) load(Promise.resolve(incoming), false)
   }, [incoming])
 
   // 이 화면이 열려 있으면 창 어디에 떨어뜨려도 파일을 받는다
@@ -99,9 +99,11 @@ export default function ConvertView({ active, rules, rulesRev, onRulesChanged, i
     }
   }, [active])
 
-  function load(p: Promise<OpenedFile | null>) {
+  /** fromUser: 사용자가 직접 연 파일이면 튜토리얼을 끝낸다 (튜토리얼 중에는 Rule 저장이 막혀 있으므로) */
+  function load(p: Promise<OpenedFile | null>, fromUser = true) {
     p.then((f) => {
       if (!f) return
+      if (fromUser) onExitTutorial()
       setFile(f)
       setResult(null)
       setResolutions({})
