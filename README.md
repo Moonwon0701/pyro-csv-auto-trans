@@ -75,7 +75,9 @@
 모든 PC는 시작할 때 이 저장소의 [`rules/rules.json`](rules/rules.json)을 받아서 사용합니다. 오프라인이면 마지막으로 받은 사본을 씁니다.
 
 - **직접 수정**: GitHub에서 `rules/rules.json`을 편집하고 Commit하면, 각 PC에서 앱을 다시 켜거나 "Rule 관리 → 최신 공용 Rule 받기"를 누를 때 반영됩니다.
-- **디자이너가 추가한 Rule 모으기**: 디자이너 PC의 "Rule 관리 → 공용 Rule로 올리기"를 누르면 전체 rules.json 내용이 클립보드에 복사되고 GitHub 편집 페이지가 열립니다. 편집 권한이 있는 사람이 기존 내용을 지우고 붙여넣은 뒤 Commit합니다.
+- **디자이너가 올린 Rule**: 디자이너가 "Rule 관리 → 공용 Rule로 올리기"를 누르면, 공용과 다른 내 PC Rule이 채워진 `[Rule 요청]` 이슈 작성 페이지가 열립니다. GitHub 계정(무료)으로 로그인해 Submit하면 [GitHub Actions](.github/workflows/rule-request.yml)가 내용을 검사하고 `rules.json`에 Prefix 단위로 합쳐 Commit한 뒤 이슈를 닫습니다. 편집 권한은 필요 없습니다.
+  - [`rules/contributors.txt`](rules/contributors.txt)에 아이디가 있는 디자이너와 저장소 관리자의 요청은 **바로 반영**됩니다.
+  - 그 밖의 사람이 올린 요청은 "관리자 확인 대기" 댓글이 달립니다. 내용이 맞으면 이슈에 **`승인` 라벨**을 붙이면 반영됩니다. 틀리면 이슈를 닫으면 됩니다.
 
 ```jsonc
 // positionRules 항목 예시

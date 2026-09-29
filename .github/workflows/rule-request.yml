@@ -1,0 +1,56 @@
+name: Rule 요청 반영
+
+# 앱의 "공용 Rule로 올리기"가 여는 "[Rule 요청]" 이슈를 rules/rules.json에 반영한다.
+# 등록된 디자이너(rules/contributors.txt)와 저장소 관리자는 바로 반영,
+# 그 밖의 사람은 관리자가 "승인" 라벨을 붙이면 반영.
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  contents: write
+  issues: write
+
+# 요청이 동시에 들어와도 한 번에 하나씩 반영해서 서로 덮어쓰지 않게 한다
+concurrency:
+  group: rule-request
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: >-
+      startsWith(github.event.issue.title, '[Rule 요청]') &&
+      github.event.issue.state == 'open' &&
+      (github.event.action == 'opened' || github.event.label.name == '승인')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ISSUE: ${{ github.event.issue.number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - id: apply
+        run: npx vite-node scripts/apply-rule-request.ts
+      - name: Commit rules.json
+        if: steps.apply.outputs.result == 'applied'
+        env:
+          AUTHOR: ${{ github.event.issue.user.login }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rules/rules.json
+          git commit -m "Rule 요청 #$ISSUE 반영 (@$AUTHOR)"
+          git push origin HEAD:main
+      - name: Comment
+        run: gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/rule-comment.md"
+      - name: Close
+        if: steps.apply.outputs.result == 'applied' || steps.apply.outputs.result == 'nochange'
+        run: gh issue close "$ISSUE" --repo "$GITHUB_REPOSITORY"

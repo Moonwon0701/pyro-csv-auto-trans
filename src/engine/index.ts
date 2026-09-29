@@ -4,4 +4,5 @@ export { transform, sanitizeSheetName, MISSING_ADDRESS_TEXT, UNPLACED_COLUMN, NO
 export { buildXlsx } from './excel'
 export { mergeRules, prefixOfPattern, patternOfPrefix, findPositionRule, type LocalRules } from './rules'
 export { parsePosition, formatPosition } from './position'
+export * from './rule-request'
 export * from './assign'

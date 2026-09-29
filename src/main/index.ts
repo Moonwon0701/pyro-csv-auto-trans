@@ -15,8 +15,8 @@ import {
   type Resolution,
   type TransformOptions
 } from '../engine'
-import { REPO_URL, RULES_EDIT_URL } from './config'
-import { exportMergedRulesJson, getRules, loadRules, saveLocalRules } from './rules-store'
+import { REPO_URL, RULES_ISSUE_URL } from './config'
+import { buildShareRequest, getRules, loadRules, saveLocalRules, type ShareResult } from './rules-store'
 import { checkForUpdates, installUpdate } from './updates'
 
 let win: BrowserWindow | null = null
@@ -192,9 +192,17 @@ ipcMain.handle('shell:openExternal', (_e, url: string) => {
 ipcMain.handle('rules:get', () => getRules())
 ipcMain.handle('rules:refresh', () => loadRules(true))
 ipcMain.handle('rules:saveLocal', (_e, local: LocalRules) => saveLocalRules(local))
-ipcMain.handle('rules:share', () => {
-  clipboard.writeText(exportMergedRulesJson())
-  shell.openExternal(RULES_EDIT_URL)
+/** 내 PC Rule 중 공용과 다른 것을 "[Rule 요청]" 이슈로 연다. 반영은 GitHub Actions(rule-request.yml)가 한다 */
+ipcMain.handle('rules:share', async (): Promise<ShareResult> => {
+  const state = await loadRules(true) // 최신 공용 Rule과 비교해야 이미 반영된 것을 다시 올리지 않는다
+  const req = buildShareRequest()
+  if (!req) return { count: 0, pasteNeeded: false, state }
+  const withBody = `${RULES_ISSUE_URL}?title=${encodeURIComponent(req.title)}&body=${encodeURIComponent(req.body)}`
+  // 주소가 너무 길면 GitHub이 거절하므로 본문은 클립보드로 넘긴다
+  const pasteNeeded = withBody.length > 7000
+  if (pasteNeeded) clipboard.writeText(req.body)
+  shell.openExternal(pasteNeeded ? `${RULES_ISSUE_URL}?title=${encodeURIComponent(req.title)}` : withBody)
+  return { count: req.count, pasteNeeded, state }
 })
 
 ipcMain.handle('app:info', () => ({ version: app.getVersion(), platform: process.platform, repoUrl: REPO_URL }))

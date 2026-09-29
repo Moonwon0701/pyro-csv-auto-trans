@@ -66,8 +66,22 @@ export default function RulesView({ rules, onRulesChanged }: Props) {
   }
 
   async function share() {
-    await window.api.shareRules()
-    setMsg('전체 rules.json 내용을 클립보드에 복사했고 GitHub 편집 페이지를 열었습니다. 기존 내용을 모두 지우고 붙여넣은 뒤 Commit하세요.')
+    setBusy(true)
+    try {
+      const r = await window.api.shareRules()
+      onRulesChanged(r.state)
+      setMsg(
+        r.count === 0
+          ? '내 PC Rule이 모두 이미 공용 Rule에 들어 있어서 올릴 것이 없습니다.'
+          : r.pasteNeeded
+            ? `Rule ${r.count}개 요청 페이지를 열었습니다. 내용이 길어서 클립보드에 복사해 두었으니 본문에 붙여넣고 Submit을 누르세요.`
+            : `Rule ${r.count}개 요청 페이지를 열었습니다. GitHub에 로그인한 뒤 Submit을 누르면 반영됩니다.`
+      )
+    } catch (e) {
+      setMsg(`올리지 못했습니다: ${(e as Error).message ?? e}`)
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -169,13 +183,13 @@ export default function RulesView({ rules, onRulesChanged }: Props) {
             <button className="btn" onClick={refresh} disabled={busy}>
               최신 공용 Rule 받기
             </button>
-            <button className="btn" onClick={share} disabled={rules.local.positionRules.length === 0}>
+            <button className="btn" onClick={share} disabled={busy || rules.local.positionRules.length + rules.local.typeRules.length === 0}>
               공용 Rule로 올리기
             </button>
           </div>
           <p className="hint">
-            "공용 Rule로 올리기"를 누르면 내 PC Rule을 합친 전체 rules.json 내용이 복사되고 GitHub 편집 페이지가 열립니다. 저장소 편집 권한이
-            있는 관리자가 붙여넣고 Commit하면 모든 PC에 반영됩니다.
+            "공용 Rule로 올리기"를 누르면 공용과 다른 내 PC Rule이 채워진 GitHub 요청 페이지가 열립니다. GitHub 계정으로 로그인해 Submit하면
+            자동으로 공용 Rule에 합쳐지고(처음 요청하는 사람은 관리자 확인 후), 다른 PC는 앱을 다시 켜거나 "최신 공용 Rule 받기"로 받습니다.
           </p>
         </div>
 

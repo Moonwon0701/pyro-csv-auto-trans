@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { AssignOptions, AssignPlanEntry, AssignResult, LocalRules, PositionSlot, Resolution, TransformOptions, TransformResult } from '../engine'
-import type { RulesState } from '../main/rules-store'
+import type { RulesState, ShareResult } from '../main/rules-store'
 import type { UpdateStatus } from '../main/updates'
 
 export interface AssignSource {
@@ -39,7 +39,7 @@ const api = {
   getRules: (): Promise<RulesState> => ipcRenderer.invoke('rules:get'),
   refreshRules: (): Promise<RulesState> => ipcRenderer.invoke('rules:refresh'),
   saveLocalRules: (local: LocalRules): Promise<RulesState> => ipcRenderer.invoke('rules:saveLocal', local),
-  shareRules: (): Promise<void> => ipcRenderer.invoke('rules:share'),
+  shareRules: (): Promise<ShareResult> => ipcRenderer.invoke('rules:share'),
   appInfo: (): Promise<{ version: string; platform: string; repoUrl: string }> => ipcRenderer.invoke('app:info'),
   installUpdate: (): Promise<void> => ipcRenderer.invoke('update:install'),
   onOpened: (cb: (f: OpenedFile) => void) => {

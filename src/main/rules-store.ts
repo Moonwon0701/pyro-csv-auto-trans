@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
-import { mergeRules, type LocalRules, type RuleSet } from '../engine'
+import { buildRuleRequest, mergeRules, ruleRequestBody, ruleRequestTitle, type LocalRules, type RuleSet } from '../engine'
 import bundledRules from '../../rules/rules.json'
 import { RULES_RAW_URL } from './config'
 
@@ -92,14 +92,17 @@ export function saveLocalRules(local: LocalRules): RulesState {
   return state
 }
 
-/** 공용 rules.json에 그대로 붙여넣을 수 있는 전체 파일 내용 */
-export function exportMergedRulesJson(): string {
+/** 내 PC Rule 중 공용과 다른 것을 GitHub 이슈 요청(제목·본문)으로 만든다. 올릴 것이 없으면 null */
+export function buildShareRequest(): { title: string; body: string; count: number } | null {
   const s = state!
-  const merged: RuleSet = {
-    ...s.effective,
-    version: (s.shared.version ?? 0) + 1,
-    updated_at: new Date().toISOString().slice(0, 10),
-    positionRules: s.effective.positionRules.map((r) => ({ ...r, source: r.source === 'default' ? 'default' : 'user' }))
-  }
-  return JSON.stringify(merged, null, 2) + '\n'
+  const req = buildRuleRequest(s.local, s.shared)
+  return req && { title: ruleRequestTitle(req), body: ruleRequestBody(req), count: req.positionRules.length + req.typeRules.length }
+}
+
+export interface ShareResult {
+  /** 올린 Rule 수. 0이면 공용과 다른 것이 없어 이슈를 열지 않았다 */
+  count: number
+  /** 본문이 길어서 주소에 못 넣고 클립보드로 복사했다 */
+  pasteNeeded: boolean
+  state: RulesState
 }
