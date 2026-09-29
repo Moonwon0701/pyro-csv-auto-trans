@@ -92,7 +92,7 @@ button, select, input { font: inherit; color: inherit; }
 .chip.dim { color: var(--muted); }
 
 table.grid { border-collapse: collapse; width: 100%; font-size: 13px; }
-table.grid th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; padding: 5px 6px; border-bottom: 1px solid var(--border); }
+table.grid th { white-space: nowrap; text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; padding: 5px 6px; border-bottom: 1px solid var(--border); }
 table.grid td { padding: 5px 6px; border-bottom: 1px solid #f0f1f3; vertical-align: middle; }
 table.grid tr:last-child td { border-bottom: 0; }
 .num { text-align: right; font-variant-numeric: tabular-nums; }

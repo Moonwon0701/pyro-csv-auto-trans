@@ -75,4 +75,11 @@ npm version patch          # package.json 버전 올림 + 태그 생성
 git push --follow-tags     # GitHub Actions가 Windows/Mac 설치파일을 만들어 Release에 올림
 ```
 
-> 고객 CSV와 결과 Excel은 저장소에 올리지 않습니다. 실제 샘플은 `samples/` 폴더(git 제외)에 두고 테스트하세요.
+### 실제 샘플로 회귀 테스트
+
+고객 CSV와 결과 Excel은 저장소에 올리지 않습니다. `samples/` 폴더(git 제외)에 둡니다.
+
+1. `samples/`에 원본 CSV와 정리 완료 Excel을 넣습니다.
+2. `py scripts/xlsx_to_expected.py "samples/결과.xlsx" "samples/원본.csv"`를 실행하면 `samples/expected/원본.json`이 만들어집니다.
+3. 필요하면 `samples/expected/원본.meta.json`을 작성합니다. 예: `{ "resolutions": { "5S": "타상" }, "ordered": true }`
+4. `npm test`: 시트, 그룹 수, 셀 값이 기대 결과와 같은지 확인합니다.

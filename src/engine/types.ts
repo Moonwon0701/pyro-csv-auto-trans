@@ -105,6 +105,10 @@ export interface SheetModel {
   name: string
   control: string
   category: Category | '미분류'
+  /** Excel 1행: 제목 */
+  title: string
+  /** Excel 2행: 원본 행 수·병합 기준 요약 */
+  summary: string
   columns: string[]
   rows: SheetCell[][]
   sourceRowCount: number

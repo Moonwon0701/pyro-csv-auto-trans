@@ -54,7 +54,9 @@ describe('Spec 10. Acceptance Test', () => {
       'FC-01,2,00,00,02,00,cake,CK-03,2,,,1,B',
       'FC-01,3,00,00,03,00,cake,SCK-03,3,,,1,C'
     ])
-    expect(sheet(sheets, '연발').columns.filter((c) => /^C-/.test(c))).toEqual(['C-03'])
+    const s = sheet(sheets, '연발')
+    expect(s.columns.filter((c) => /^C-/.test(c))).toEqual(['C-01', 'C-02', 'C-03'])
+    expect(s.rows.map((_, i) => cell(s, i, 'C-03'))).toEqual(['1', '2', '3'])
   })
 
   it('T03 G/H1/H2/TX-08 → S-08', () => {
@@ -65,18 +67,19 @@ describe('Spec 10. Acceptance Test', () => {
       'FC-01,4,00,00,04,00,single_shot,TX-08,4,,,1,D'
     ])
     const s = sheet(sheets, '단발')
-    expect(s.columns.filter((c) => /^S-/.test(c))).toEqual(['S-08'])
+    expect(s.columns.filter((c) => /^S-/.test(c)).at(-1)).toBe('S-08')
     expect(s.rows).toHaveLength(4)
   })
 
-  it('T04/T11 신규 번호는 질문 없이 열 자동 생성 (P-08, P-12)', () => {
+  it('T04/T11 신규 번호는 질문 없이 열 자동 생성 (P-01 ~ 최대 P-12 연속)', () => {
     const { sheets, analysis } = run([
       'FC-01,1,00,00,01,00,shell,3P-01,1,,,1,A',
       'FC-01,2,00,00,02,00,shell,3P-12,2,,,1,A',
       'FC-01,3,00,00,03,00,shell,7P-08,3,,,1,A'
     ], {}, { '7P': '타상' })
     const s = sheet(sheets, '타상')
-    expect(s.columns.filter((c) => /^P-/.test(c))).toEqual(['P-01', 'P-08', 'P-12'])
+    expect(s.columns.filter((c) => /^P-/.test(c))).toEqual(Array.from({ length: 12 }, (_, i) => `P-${String(i + 1).padStart(2, '0')}`))
+    expect(cell(s, 2, 'P-08')).toBe('3')
     expect(analysis.issues.find((i) => i.code === 'UNKNOWN_PREFIX')).toBeUndefined()
   })
 
@@ -172,11 +175,12 @@ describe('Spec 10.1 실패하면 안 되는 항목', () => {
     const wb = new ExcelJS.Workbook()
     await wb.xlsx.load(Buffer.from(bytes) as unknown as ExcelJS.Buffer)
     const ws = wb.getWorksheet('타상')!
-    expect(ws.getCell('B2').value).toBe('00')
-    const pCol = (ws.getRow(1).values as string[]).indexOf('P-01')
-    expect(ws.getRow(2).getCell(pCol).value).toBe('47A')
-    expect(ws.getRow(3).getCell(pCol + 1).value).toBe('1F0')
-    expect(ws.getRow(4).getCell(pCol + 2).value).toBe('0012')
+    expect(ws.getCell('A1').value).toBe('test - 타상')
+    expect(ws.getCell('B4').value).toBe('00')
+    const pCol = (ws.getRow(3).values as string[]).indexOf('P-01')
+    expect(ws.getRow(4).getCell(pCol).value).toBe('47A')
+    expect(ws.getRow(5).getCell(pCol + 1).value).toBe('1F0')
+    expect(ws.getRow(6).getCell(pCol + 2).value).toBe('0012')
   })
 
   it('미등록 Prefix를 TYPE만 보고 자동 분류하지 않는다', () => {
@@ -196,6 +200,22 @@ describe('Spec 10.1 실패하면 안 되는 항목', () => {
 })
 
 describe('보조 규칙', () => {
+  it('시간 값 한 자리는 두 자리로 맞춤 (0 → 00)', () => {
+    const { sheets } = run(['FC-01,1,0,1,40,5,shell,3P-01,221,,,1,A'])
+    expect(sheet(sheets, '타상').rows[0].slice(1, 5).map((c) => c.value)).toEqual(['00', '01', '40', '05'])
+  })
+
+  it('빈 시트도 파일 전체 최대 번호까지 Position 열을 가진다', () => {
+    const { sheets } = run(['FC-01,1,00,00,01,00,shell,3P-03,1,,,1,A', 'FC-02,1,00,00,01,00,cake,C-01,1,,,1,A'])
+    expect(sheet(sheets, 'FC-02 타상').columns.filter((c) => /^P-/.test(c))).toEqual(['P-01', 'P-02', 'P-03'])
+  })
+
+  it('MFG, PRICE1은 결과에서 제외하고 PFT는 Effect 앞에 둔다', () => {
+    const { sheets, analysis } = run(['FC-01,1,00,00,01,00,shell,3P-01,1,M,9.9,100,A,R'], {}, {}, 'CONTROL,CUE,HH,MM,SS,FF,TYPE,POS,ADDR,MFG,PRICE1,PFT,Effect Description,REF')
+    expect(sheet(sheets, '타상').columns).toEqual(['CUE', 'HH', 'MM', 'SS', 'FF', 'PFT', 'Effect Description', 'REF', 'P-01'])
+    expect(analysis.ignoredColumns).toEqual(['MFG', 'PRICE1'])
+  })
+
   it('POS가 비어 있으면 TYPE으로 분류하고 미배치 POS 열에 보존', () => {
     const { sheets, analysis } = run(['FC-01,1,00,00,01,00,cake,,55,,,1,A'])
     const s = sheet(sheets, '연발')
@@ -224,6 +244,7 @@ describe('보조 규칙', () => {
     const { sheets, analysis } = run(['FC-01,1,00,00,01,00,shell,3P-01,,,,1,A'])
     expect(cell(sheet(sheets, '타상'), 0, 'P-01')).toBe('주소없음')
     expect(analysis.issues.some((i) => i.code === 'NO_ADDRESS')).toBe(true)
+    expect(analysis.issues.some((i) => i.code === 'NO_ADDRESS_ANY')).toBe(true)
   })
 
   it('기타 컬럼: 같으면 한 번, 다르면 ", "로 연결', () => {

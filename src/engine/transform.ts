@@ -1,4 +1,4 @@
-import { PASSTHROUGH_AFTER_EFFECT, PASSTHROUGH_BEFORE_EFFECT, detectColumns } from './columns'
+import { OUTPUT_KEYS, PASSTHROUGH_AFTER_EFFECT, PASSTHROUGH_BEFORE_EFFECT, detectColumns } from './columns'
 import { formatPosition, parsePosition } from './position'
 import { findPositionRule, findTypeRule } from './rules'
 import {
@@ -20,6 +20,7 @@ import {
 } from './types'
 
 const MAX_LINES = 50
+const TIME_KEYS: ColumnKey[] = ['HH', 'MM', 'SS', 'FF']
 const MAX_DETAILS = 100
 const NO_CONTROL = 'NO-CONTROL'
 export const MISSING_ADDRESS_TEXT = '주소없음'
@@ -104,6 +105,11 @@ export function transform(
     return idx === undefined ? '' : (row[idx] ?? '').trim()
   }
   const headerOf = (key: ColumnKey) => csv.headers[cols.get(key)!]
+  /** HH/MM/SS/FF는 숫자면 2자리로 맞춘다 (0 → 00) */
+  const getKey = (row: string[], key: ColumnKey) => {
+    const v = get(row, key)
+    return TIME_KEYS.includes(key) && /^\d$/.test(v) ? `0${v}` : v
+  }
 
   // ---- 컬럼 수준 검사 ----
   if (csv.headers.length === 0) {
@@ -219,11 +225,11 @@ export function transform(
       buckets.set(bucketKey, bucket)
     }
     bucket.rowCount++
-    const groupKey = opts.groupKeys.map((k) => get(row, k)).join('\u0001')
+    const groupKey = opts.groupKeys.map((k) => getKey(row, k)).join('\u0001')
     let group = bucket.groups.get(groupKey)
     if (!group) {
       const key: Group['key'] = {}
-      for (const k of ['HH', 'MM', 'SS', 'FF', 'EFFECT'] as ColumnKey[]) key[k] = get(row, k)
+      for (const k of [...TIME_KEYS, 'EFFECT'] as ColumnKey[]) key[k] = getKey(row, k)
       group = { key, extras: new Map(), positions: new Map(), unplaced: [], sourceRows: 0 }
       bucket.groups.set(groupKey, group)
     }
@@ -243,6 +249,14 @@ export function transform(
       group.unplaced.push(address ? `${posRaw || '(POS 없음)'}=${address}` : posRaw || '(POS 없음)')
     }
   })
+
+  if (csv.rows.length > 0 && addrSummary.addr === 0 && addrSummary.modulePin === 0 && addrSummary.none > 0) {
+    issues.add(
+      'NO_ADDRESS_ANY',
+      'warning',
+      '이 CSV에는 주소(ADDR 또는 MODULE-PIN)가 하나도 없습니다. 주소를 매기기 전 원본 파일인지 확인하세요.'
+    )
+  }
 
   // ---- 미등록 prefix / 매핑 표 ----
   const prefixMappings: PrefixMapping[] = []
@@ -285,6 +299,15 @@ export function transform(
   const single = controls.length <= 1
   const usedNames = new Set<string>()
   const sheets: SheetModel[] = []
+  const maxPosition = new Map<Category, number>()
+  for (const b of buckets.values()) {
+    for (const g of b.groups.values()) {
+      for (const n of g.positions.keys()) maxPosition.set(b.category, Math.max(maxPosition.get(b.category) ?? 0, n))
+    }
+  }
+  const baseFileName = csv.fileName.replace(/\.[^.]+$/, '')
+  const groupKeyLabel = opts.groupKeys.map((k) => (cols.has(k) ? headerOf(k) : k)).join(' + ')
+  const addressLabel = addrSummary.addr >= addrSummary.modulePin ? (addrSummary.addr ? 'ADDR' : '없음') : 'MODULE-PIN'
   const categoryStats: Analysis['categoryStats'] = []
 
   for (const control of controls) {
@@ -302,6 +325,8 @@ export function transform(
       name: sanitizeSheetName('미분류', usedNames),
       control: '',
       category: '미분류',
+      title: `${baseFileName} - 미분류`,
+      summary: `분류할 수 없는 원본 ${unclassified.length}행 (POS Rule·TYPE Rule 모두 해당 없음)`,
       columns: ['원본 줄', ...csv.headers],
       rows: unclassified.map(({ row, line }) => [{ value: String(line) }, ...row.map((v) => ({ value: v }))]),
       sourceRowCount: unclassified.length
@@ -311,7 +336,7 @@ export function transform(
   function buildSheet(name: string, control: string, category: Category, bucket?: SheetBucket): SheetModel {
     const groups = bucket ? [...bucket.groups.values()] : []
     const prefix = bucket?.outputPrefix ?? CATEGORY_PREFIX[category]
-    const numbers = [...new Set(groups.flatMap((g) => [...g.positions.keys()]))].sort((a, b) => a - b)
+    const numbers = Array.from({ length: maxPosition.get(category) ?? 0 }, (_, i) => i + 1)
     const hasUnplaced = groups.some((g) => g.unplaced.length > 0)
 
     const lead: ColumnKey[] = (['HH', 'MM', 'SS', 'FF'] as ColumnKey[]).filter((k) => cols.has(k))
@@ -349,12 +374,22 @@ export function transform(
       return cells
     })
 
-    return { name, control, category, columns, rows, sourceRowCount: bucket?.rowCount ?? 0 }
+    const sourceRowCount = bucket?.rowCount ?? 0
+    return {
+      name,
+      control,
+      category,
+      title: `${baseFileName} - ${name}`,
+      summary: `원본 ${sourceRowCount}행 → ${rows.length}개 그룹 | 병합 기준: ${groupKeyLabel} | 위치값: ${addressLabel} | POS 표준화: ${category} 동일 끝번호끼리 통합`,
+      columns,
+      rows,
+      sourceRowCount
+    }
   }
 
   const detectedColumns = [...cols.entries()].map(([key, idx]) => ({ key, header: csv.headers[idx] }))
-  const known = new Set(cols.values())
-  const ignoredColumns = csv.headers.filter((h, i) => h && !known.has(i))
+  const used = new Set(OUTPUT_KEYS.filter((k) => cols.has(k)).map((k) => cols.get(k)!))
+  const ignoredColumns = csv.headers.filter((h, i) => h && !used.has(i))
 
   const dominant: Analysis['addressSummary']['dominant'] =
     addrSummary.addr === 0 && addrSummary.modulePin === 0
