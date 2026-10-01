@@ -25,10 +25,14 @@ export const VERTICAL = 90
  */
 export const leanOf = (tilt: number) => (tilt >= 0 ? VERTICAL - tilt : -(VERTICAL + tilt))
 
-/** 현장 레이아웃 표기 (수직 기준): ↖60°, ↑0°, 15°↗ */
-export function leanLabel(tilt: number): string {
+/**
+ * 치구 칸 각도 표기 (TILT와 같은 바닥 기준, 90 = 수직): ↖-30°, ↑90°, 75°↗.
+ * 한 줄을 왼쪽부터 읽으면 -30 -40 … -80 90 80 … 30 순서다.
+ */
+export function tiltLabel(tilt: number): string {
   const lean = Math.round(leanOf(tilt))
-  return lean < 0 ? `↖${-lean}°` : lean === 0 ? '↑0°' : `${lean}°↗`
+  const angle = VERTICAL - Math.abs(lean)
+  return lean < 0 ? `↖-${angle}°` : lean === 0 ? `↑${VERTICAL}°` : `${angle}°↗`
 }
 
 export interface JigSettings {

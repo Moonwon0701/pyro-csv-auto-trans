@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { leanLabel, leanOf, type JigPosition, type JigSettings } from '@engine/jig'
+import { leanOf, tiltLabel, type JigPosition, type JigSettings } from '@engine/jig'
 import { outputPrefixOf, type Issue, type PositionRule, type Resolution } from '@engine/types'
 import type { RulesState } from '../../main/rules-store'
 import type { AssignSource, JigRun, OpenedFile } from '../../preload'
@@ -379,7 +379,7 @@ function PositionFan({ position: p, selected, onSelect }: { position: JigPositio
                     y2={FAN.base - FAN.length * Math.cos(rad)}
                     className={`fan-tube ${field.has(s.cue) ? 'field' : ''} ${cue.estimated ? 'estimated' : ''}`}
                   >
-                    <title>{`${cue.address} ${leanLabel(s.tilt)}${cue.estimated ? ' (추정)' : ''}\n${cue.effect}`}</title>
+                    <title>{`${cue.address} ${tiltLabel(s.tilt)}${cue.estimated ? ' (추정)' : ''}\n${cue.effect}`}</title>
                   </line>
                 )
               })}
@@ -435,7 +435,7 @@ function JigTable({ position: p, jig, index }: { position: JigPosition; jig: Jig
                       {cue.tilts.length > 1 && <span className="series"> 직렬{slot.shot}</span>}
                     </div>
                     <div className="lean">
-                      {leanLabel(slot.tilt)}
+                      {tiltLabel(slot.tilt)}
                       {cue.estimated ? '?' : ''}
                     </div>
                   </td>
@@ -446,7 +446,7 @@ function JigTable({ position: p, jig, index }: { position: JigPosition; jig: Jig
         </tbody>
       </table>
       <div className="hint">
-        관객석에서 본 칸 배치 · <b>M1-3</b> = 이 위치의 1번째 모듈 3번 핀 (실제 주소는 ②에서 이 순서대로 붙음) · 각도는 수직 기준(↖ 왼쪽으로 눕힘 / ↑ 수직 /
+        관객석에서 본 칸 배치 · <b>M1-3</b> = 이 위치의 1번째 모듈 3번 핀 (실제 주소는 ②에서 이 순서대로 붙음) · 각도는 TILT와 같은 바닥 기준, 90° = 수직(↖ 왼쪽으로 눕힘 / ↑ 수직 /
         ↗ 오른쪽) · 칸에 마우스를 올리면 효과 · <span className="swatch" style={{ background: 'var(--warn-soft)' }} />
         추정 각도 · <span className="swatch" style={{ background: '#fde2d3' }} />
         현장 결선

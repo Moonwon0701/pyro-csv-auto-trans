@@ -9,7 +9,7 @@
  */
 import { normalizeAddress } from './assign'
 import { detectColumns } from './columns'
-import { leanLabel, planJigs, type JigPosition, type JigSettings } from './jig'
+import { tiltLabel, planJigs, type JigPosition, type JigSettings } from './jig'
 import { parsePosition } from './position'
 import { findPositionRule, findTypeRule } from './rules'
 import { CATEGORIES, EXCLUDE, type Category, type ParsedCsv, type Resolution, type RuleSet } from './types'
@@ -384,7 +384,7 @@ export function extraSheets(
 export function jigSheet(positions: JigPosition[], cols: number): GridSheet {
   const cells: GridCell[] = []
   const put = (row: number, col: number, value: string, style?: GridCell['style']) => value !== '' && cells.push({ row, col, value, style })
-  put(1, 1, '치구 배치도 — 관객석에서 본 칸 배치. 각도는 수직 기준 (↖ 왼쪽으로 눕힘, ↑ 수직, ↗ 오른쪽으로 눕힘)', 'title')
+  put(1, 1, '치구 배치도 — 관객석에서 본 칸 배치. 각도는 TILT와 같은 바닥 기준, 90° = 수직 (↖ 왼쪽으로 눕힘, ↑ 수직, ↗ 오른쪽으로 눕힘)', 'title')
   let row = 3
   const heights: Record<number, number> = {}
   for (const p of positions) {
@@ -410,7 +410,7 @@ export function jigSheet(positions: JigPosition[], cols: number): GridSheet {
           if (!slot) return
           const cue = p.cues[slot.cue]
           const shot = cue.tilts.length > 1 ? ` (직렬 ${slot.shot}/${cue.tilts.length})` : ''
-          put(row + 2 + r, col + 1 + c, `${cue.address}${shot}\n${leanLabel(slot.tilt)}${cue.estimated ? '?' : ''}\n${cue.effect}`, field.has(slot.cue) ? 'slot-field' : cue.estimated ? 'slot-estimated' : 'slot')
+          put(row + 2 + r, col + 1 + c, `${cue.address}${shot}\n${tiltLabel(slot.tilt)}${cue.estimated ? '?' : ''}\n${cue.effect}`, field.has(slot.cue) ? 'slot-field' : cue.estimated ? 'slot-estimated' : 'slot')
         })
       })
       col += width + 2

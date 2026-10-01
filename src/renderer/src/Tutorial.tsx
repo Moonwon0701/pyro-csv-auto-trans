@@ -71,7 +71,7 @@ const SLIDES: Slide[] = [
         </li>
         <li>
           <b>무대 지도</b>에서 위치를 누르면 <b>확대도</b>: 관객석에서 본 부채꼴(선 하나 = 약 하나)과 치구 칸 배치표(칸마다 <span className="mono">M1-3</span>{' '}
-          같은 핀 순서와 <span className="mono">↖60°</span> 같은 각도)가 나옵니다.
+          같은 핀 순서와 <span className="mono">↖-30°</span>·<span className="mono">↑90°</span> 같은 각도)가 나옵니다.
         </li>
         <li>
           치구 크기(기본 4×5)는 왼쪽 <b>치구 설정</b>에서 바꿉니다. 다 됐으면 <b>② 주소 매기기 →</b>.
