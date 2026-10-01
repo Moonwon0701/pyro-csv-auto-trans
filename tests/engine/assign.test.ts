@@ -75,11 +75,16 @@ describe('주소 배정', () => {
     expect(addrOf(r.csv).slice(0, 3)).toEqual(['21F', '110', '111'])
   })
 
-  it('자동 제안: Control별로 01부터, 위치마다 새 모듈', () => {
+  it('자동 제안: 기본은 Control별로 10부터 (앞자리 0 주소를 피함)', () => {
+    const slots = listPositions(csvOf(lines), RULES)
+    expect(proposePlan(slots).map((p) => p.ranges)).toEqual(['100-102', '110-110', '100-100'])
+  })
+
+  it('자동 제안: 시작 모듈 01, 위치마다 새 모듈', () => {
     const slots = listPositions(csvOf(lines), RULES)
     expect(slots.map((s) => `${s.control}/${s.pos}/${s.needed}`)).toEqual(['FC-01/3P-01/3', 'FC-01/3P-02/1', 'FC-02/S-01/1'])
-    expect(proposePlan(slots).map((p) => p.ranges)).toEqual(['010-012', '020-020', '010-010'])
-    const r = assignAddresses(csvOf(lines), { sortMode: 'time', plan: proposePlan(slots) })
+    expect(proposePlan(slots, '01').map((p) => p.ranges)).toEqual(['010-012', '020-020', '010-010'])
+    const r = assignAddresses(csvOf(lines), { sortMode: 'time', plan: proposePlan(slots, '01') })
     expect(r.blocked).toBe(false)
     expect(addrOf(r.csv)).toEqual(['010', '011', '012', '020', '010'])
   })

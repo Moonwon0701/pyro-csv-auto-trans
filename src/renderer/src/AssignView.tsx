@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { AssignOptions, AssignPlanEntry, SortMode } from '@engine/assign'
+import { DEFAULT_START_MODULE, type AssignOptions, type AssignPlanEntry, type SortMode } from '@engine/assign'
 import type { JigSettings } from '@engine/jig'
 import { describeJigSettings, loadJigSettings } from './jigSettings'
 import type { Issue } from '@engine/types'
@@ -24,7 +24,7 @@ export default function AssignView({ active, tutorial, onExitTutorial, incoming,
   const [source, setSource] = useState<AssignSource | null>(null)
   const [sortMode, setSortMode] = useState<SortMode>('effect')
   const [jig, setJig] = useState<JigSettings>(loadJigSettings)
-  const [startModule, setStartModule] = useState('01')
+  const [startModule, setStartModule] = useState(DEFAULT_START_MODULE)
   const [ranges, setRanges] = useState<Record<string, string>>({})
   const [run, setRun] = useState<AssignRun | null>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -199,6 +199,10 @@ export default function AssignView({ active, tutorial, onExitTutorial, incoming,
               자동 배정은 Control마다 시작 모듈부터, 위치마다 새 모듈에서 시작해 필요한 만큼 이어서 잡습니다. 오른쪽 표에서 위치별 범위를 직접 고칠 수
               있습니다. 예: <span className="mono">210</span> (여기서부터), <span className="mono">210-22F</span>,{' '}
               <span className="mono">01F-01F, 110</span> (여러 범위).
+            </p>
+            <p className="hint">
+              시작 모듈 기본값은 <span className="mono">10</span>입니다. 01~0F 모듈 주소(<span className="mono">010</span> 등)는 CSV를 엑셀로 열면 앞자리
+              0이 사라져 <span className="mono">10</span>으로 보이기 때문입니다.
             </p>
             <p className="hint">FM-A 규칙: 모듈 00과 xE(0E, 1E…)는 건너뜁니다. 이미 주소가 있는 행은 그대로 두고 그 주소는 다시 쓰지 않습니다.</p>
           </div>

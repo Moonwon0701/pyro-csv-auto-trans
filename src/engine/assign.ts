@@ -20,6 +20,11 @@ for (let m = 1; m < 256; m++) {
   if (h[1] !== 'E') MODULES.push(h)
 }
 const MAX_INDEX = MODULES.length * PINS_PER_MODULE - 1
+/**
+ * 자동 배정 기본 시작 모듈. 01~0F 모듈 주소(010 등)는 CSV를 엑셀로 열면 앞자리 0이 사라져
+ * 라벨에 "10"으로 찍히므로 10부터 시작한다 (태훈 2026-10-01). 화면에서 01로 바꿀 수 있다.
+ */
+export const DEFAULT_START_MODULE = '10'
 
 /** "1F0" → 순번. 형식이 틀리면 null. 엑셀이 앞자리 0을 지운 "28"(=028)도 허용 */
 export function addressToIndex(addr: string): number | null {
@@ -132,7 +137,7 @@ export function listPositions(csv: ParsedCsv, rules: RuleSet): PositionSlot[] {
  * jigModules(`${control}\u0000${pos}` → 모듈 수)가 있으면 치구 대상 위치는 치구 배치에 필요한 모듈 수만큼 비워 둔다
  * (직렬이 많으면 16핀을 다 못 채우고 20발에서 모듈을 넘기기 때문).
  */
-export function proposePlan(slots: PositionSlot[], startModule = '01', jigModules?: Map<string, number>): AssignPlanEntry[] {
+export function proposePlan(slots: PositionSlot[], startModule = DEFAULT_START_MODULE, jigModules?: Map<string, number>): AssignPlanEntry[] {
   const plan: AssignPlanEntry[] = []
   const byControl = new Map<string, PositionSlot[]>()
   for (const s of slots) {
