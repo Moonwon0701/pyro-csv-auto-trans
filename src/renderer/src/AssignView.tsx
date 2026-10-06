@@ -151,7 +151,7 @@ export default function AssignView({ active, tutorial, onExitTutorial, incoming,
   return (
     <>
       {tutorial && (
-        <TutorialBanner step="1/3" onExit={onExitTutorial}>
+        <TutorialBanner step="1/4" onExit={onExitTutorial}>
           위치(POS)마다 주소 범위가 <b>자동으로 제안</b>됐어요. 오른쪽 표에서 위치별 범위와 배정 결과를 훑어본 뒤, 아래{' '}
           <b>③ 시트 정리 →</b>를 누르세요.
         </TutorialBanner>

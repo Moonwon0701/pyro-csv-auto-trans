@@ -9,9 +9,11 @@ import type {
   PositionSlot,
   PrefixMapping,
   Resolution,
+  SplitOptions,
   TransformOptions,
   TransformResult
 } from '../engine'
+import type { FileInfo, LabelRun, LabelSource, RestoreSummary, SavedFiles, SplitSource } from '../main/tools'
 import type { RulesState, ShareResult } from '../main/rules-store'
 import type { UpdateStatus } from '../main/updates'
 
@@ -31,6 +33,8 @@ export interface OpenedFile {
   encoding: string
   rows: number
 }
+
+export type { FileInfo, LabelRun, LabelSource, RestoreSummary, SavedFiles, SplitSource }
 
 export type JigRun = Pick<JigResult, 'positions' | 'issues' | 'blocked'> & {
   /** 이미 주소가 있는 행 수 (원본이면 0) */
@@ -56,6 +60,22 @@ const api = {
   jigOpenDropped: (file: File): Promise<OpenedFile> => ipcRenderer.invoke('jig:open', webUtils.getPathForFile(file)),
   jigRun: (settings: JigSettings): Promise<JigRun> => ipcRenderer.invoke('jig:run', settings),
   jigToAssign: (settings: JigSettings): Promise<AssignSource> => ipcRenderer.invoke('jig:toAssign', settings),
+  /** 끌어다 놓은 파일들의 경로 */
+  pathsOf: (files: File[]): string[] => files.map((f) => webUtils.getPathForFile(f)),
+  restorePick: (which: 'originals' | 'damaged'): Promise<string[] | null> => ipcRenderer.invoke('restore:pick', which),
+  restoreSet: (which: 'originals' | 'damaged', paths: string[]): Promise<FileInfo[]> => ipcRenderer.invoke('restore:set', which, paths),
+  restoreRun: (): Promise<RestoreSummary[]> => ipcRenderer.invoke('restore:run'),
+  restoreSave: (): Promise<SavedFiles> => ipcRenderer.invoke('restore:save'),
+  splitPick: (): Promise<string | null> => ipcRenderer.invoke('split:pick'),
+  splitOpen: (path: string): Promise<SplitSource> => ipcRenderer.invoke('split:open', path),
+  splitPreview: (opts: SplitOptions): Promise<{ key: string; fileName: string; rows: number }[]> => ipcRenderer.invoke('split:preview', opts),
+  splitSave: (opts: SplitOptions): Promise<SavedFiles | null> => ipcRenderer.invoke('split:save', opts),
+  labelsPick: (): Promise<LabelSource | null> => ipcRenderer.invoke('labels:pick'),
+  labelsOpen: (path: string): Promise<LabelSource> => ipcRenderer.invoke('labels:open', path),
+  labelsFromConvert: (): Promise<LabelSource> => ipcRenderer.invoke('labels:fromConvert'),
+  labelsRun: (resolutions: Record<string, Resolution>): Promise<LabelRun> => ipcRenderer.invoke('labels:run', resolutions),
+  labelsSave: (resolutions: Record<string, Resolution>, showName: string): Promise<SavedFiles | null> =>
+    ipcRenderer.invoke('labels:save', resolutions, showName),
   tutorialSample: (): Promise<AssignSource> => ipcRenderer.invoke('tutorial:sample'),
   showItem: (path: string): Promise<void> => ipcRenderer.invoke('shell:showItem', path),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('shell:openExternal', url),
@@ -70,6 +90,9 @@ const api = {
   },
   onAssignOpened: (cb: (s: AssignSource) => void) => {
     ipcRenderer.on('assign:opened', (_e, s: AssignSource) => cb(s))
+  },
+  onLabelsOpened: (cb: (f: LabelSource) => void) => {
+    ipcRenderer.on('labels:opened', (_e, f: LabelSource) => cb(f))
   },
   onJigOpened: (cb: (f: OpenedFile) => void) => {
     ipcRenderer.on('jig:opened', (_e, f: OpenedFile) => cb(f))

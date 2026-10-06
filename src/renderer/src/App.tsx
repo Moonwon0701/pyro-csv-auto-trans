@@ -2,25 +2,28 @@ import { useCallback, useEffect, useState } from 'react'
 import type { RulesState } from '../../main/rules-store'
 import type { UpdateStatus } from '../../main/updates'
 import type { Resolution } from '@engine/types'
-import type { AssignSource, OpenedFile } from '../../preload'
-import { TutorialModal, tutorialSeen } from './Tutorial'
+import type { AssignSource, LabelSource, OpenedFile } from '../../preload'
+import { TutorialModal, tutorialStatus } from './Tutorial'
 import AssignView from './AssignView'
 import ConvertView from './ConvertView'
 import JigView from './JigView'
+import LabelView from './LabelView'
 import RulesView from './RulesView'
+import ToolsView from './ToolsView'
 
-type Tab = 'assign' | 'jig' | 'convert' | 'rules'
+type Tab = 'assign' | 'jig' | 'convert' | 'labels' | 'rules' | 'tools'
 
 /** 작업 순서. 파일은 앞 단계의 “→” 버튼으로 다음 단계에 넘어가고, 각 단계는 자기 파일·설정을 그대로 들고 있다 */
 const STEPS: { key: Tab; n: string; label: string }[] = [
   { key: 'jig', n: '①', label: '치구 배치' },
   { key: 'assign', n: '②', label: '주소 매기기' },
-  { key: 'convert', n: '③', label: '시트 정리' }
+  { key: 'convert', n: '③', label: '시트 정리' },
+  { key: 'labels', n: '④', label: '라벨 만들기' }
 ]
 
 export default function App() {
   // 처음에는 항상 ①부터 (원본 CSV → ① 치구 배치 → ② 주소 매기기 → ③ 시트 정리)
-  const [tab, setTab] = useState<Tab>((['assign', 'convert', 'rules'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'jig') as Tab)
+  const [tab, setTab] = useState<Tab>((['assign', 'convert', 'labels', 'rules', 'tools'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'jig') as Tab)
   /** ② 주소 매기기에 넘어온 원본 (① 치구 배치 또는 튜토리얼) */
   const [assignIncoming, setAssignIncoming] = useState<AssignSource | null>(null)
   /** ①에서 이번 작업에만 쓰기로 고른 접두어 분류 → ③까지 */
@@ -33,7 +36,14 @@ export default function App() {
   /** Rule이 바뀔 때마다 증가시켜 변환 화면이 다시 계산하도록 한다 */
   const [rulesRev, setRulesRev] = useState(0)
   const [handoff, setHandoff] = useState<OpenedFile | null>(null)
-  const [showIntro, setShowIntro] = useState(() => !tutorialSeen() && !location.hash)
+  /** ③ → ④ 라벨 만들기로 넘긴 파일 */
+  const [labelIncoming, setLabelIncoming] = useState<LabelSource | null>(null)
+  const [labelFrom, setLabelFrom] = useState<'convert' | null>(null)
+  /** ④에서 쓸 접두어 분류: ①·③에서 이번 작업에만 고른 것 */
+  const [labelResolutions, setLabelResolutions] = useState<Record<string, Resolution>>({})
+  /** 업데이트로 안내 내용이 바뀌었으면 처음 켤 때 다시 보여 준다 */
+  const [introStatus] = useState(tutorialStatus)
+  const [showIntro, setShowIntro] = useState(() => introStatus !== 'seen' && !location.hash)
   const [tutorial, setTutorial] = useState(false)
 
   async function startSample() {
@@ -59,7 +69,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark">✦</span>불꽃쇼 CSV 자동 정리
+          <span className="brand-mark">✦</span>FASEE 불꽃쇼 CSV 자동 정리
         </div>
         <nav className="tabs steps-nav">
           {STEPS.map((s, i) => {
@@ -76,6 +86,9 @@ export default function App() {
           })}
         </nav>
         <div className="spacer" />
+        <button className={`tab ${tab === 'tools' ? 'active' : ''}`} onClick={() => setTab('tools')}>
+          파일 도구
+        </button>
         <button className={`tab ${tab === 'rules' ? 'active' : ''}`} onClick={() => setTab('rules')}>
           Rule 관리
         </button>
@@ -142,11 +155,32 @@ export default function App() {
             onBack={convertFrom ? () => setTab(convertFrom) : undefined}
             backLabel="← ② 주소 매기기"
             presetResolutions={sessionResolutions}
+            onSendToLabels={(f, resolutions) => {
+              setLabelResolutions({ ...sessionResolutions, ...resolutions })
+              setLabelIncoming(f)
+              setLabelFrom('convert')
+              setTab('labels')
+            }}
           />
+        </div>
+        <div style={{ display: tab === 'labels' ? 'contents' : 'none' }}>
+          <LabelView
+            active={tab === 'labels'}
+            incoming={labelIncoming}
+            presetResolutions={labelResolutions}
+            rulesRev={rulesRev}
+            onBack={labelFrom ? () => setTab(labelFrom) : undefined}
+            onOpenTools={() => setTab('tools')}
+            tutorial={tutorial}
+            onExitTutorial={() => setTutorial(false)}
+          />
+        </div>
+        <div style={{ display: tab === 'tools' ? 'contents' : 'none' }}>
+          <ToolsView />
         </div>
         {tab === 'rules' && rules && <RulesView rules={rules} onRulesChanged={onRulesChanged} />}
       </main>
-      {showIntro && <TutorialModal onClose={() => setShowIntro(false)} onStartSample={startSample} />}
+      {showIntro && <TutorialModal updated={introStatus === 'updated'} onClose={() => setShowIntro(false)} onStartSample={startSample} />}
     </div>
   )
 }

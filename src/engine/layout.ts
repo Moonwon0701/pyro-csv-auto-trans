@@ -11,7 +11,7 @@ import { normalizeAddress } from './assign'
 import { detectColumns } from './columns'
 import { tiltLabel, planJigs, type JigPosition, type JigSettings } from './jig'
 import { parsePosition } from './position'
-import { findPositionRule, findTypeRule } from './rules'
+import { resolveCategory } from './rules'
 import { CATEGORIES, EXCLUDE, type Category, type ParsedCsv, type Resolution, type RuleSet } from './types'
 
 export interface LayoutModuleEntry {
@@ -116,8 +116,7 @@ export function layoutLines(csv: ParsedCsv, rules: RuleSet, resolutions: Record<
     const posRaw = get(row, 'POS')
     const parsed = parsePosition(posRaw)
     if (!parsed) continue
-    const rule = findPositionRule(rules.positionRules, parsed.prefix)
-    const res: Resolution | undefined = rule?.category ?? resolutions[parsed.prefix] ?? findTypeRule(rules.typeRules, get(row, 'TYPE'))?.category
+    const res = resolveCategory(rules, resolutions, posRaw, get(row, 'TYPE'))
     if (!res || res === EXCLUDE) continue
     // 주소 → 모듈·핀
     let module = ''

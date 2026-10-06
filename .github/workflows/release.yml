@@ -58,4 +58,4 @@ jobs:
           gh release create "$GITHUB_REF_NAME" artifacts/* \
             --repo "$GITHUB_REPOSITORY" \
             --title "$GITHUB_REF_NAME" \
-            --notes "설치 방법은 README를 참고하세요. Windows: PyroCSV-Setup-*.exe / Mac: PyroCSV-*-mac.dmg"
+            --notes "설치 방법은 README를 참고하세요. Windows: FASEE-PyroCSV-Setup-*.exe / Mac: FASEE-PyroCSV-*-mac.dmg"

@@ -23,7 +23,11 @@ import {
 } from '../engine'
 import { REPO_URL, RULES_ISSUE_URL } from './config'
 import { buildShareRequest, getRules, loadRules, saveLocalRules, type ShareResult } from './rules-store'
+import { registerToolIpc } from './tools'
 import { checkForUpdates, installUpdate } from './updates'
+
+// v0.6.0에서 이름에 FASEE를 붙였다. 설정 폴더(내 PC Rule·치구 설정)는 예전 이름 그대로 쓴다
+app.setPath('userData', join(app.getPath('appData'), 'Pyro CSV Organizer'))
 
 let win: BrowserWindow | null = null
 let current: { path: string; csv: ParsedCsv } | null = null
@@ -40,7 +44,7 @@ function createWindow() {
     height: 900,
     minWidth: 960,
     minHeight: 640,
-    title: '불꽃쇼 CSV 자동 정리',
+    title: 'FASEE 불꽃쇼 CSV 자동 정리',
     autoHideMenuBar: true,
     webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: true }
   })
@@ -56,7 +60,13 @@ function createWindow() {
     const argPath = process.argv.slice(1).find((a) => /\.(csv|txt)$/i.test(a) && existsSync(a))
     if (argPath) {
       // 앱은 ① 치구 배치부터 시작한다 (②·③으로 시작한 경우만 그 단계에 연다)
-      if (hash === 'assign') {
+      if (hash === 'labels') {
+        try {
+          win!.webContents.send('labels:opened', tools.openLabelFile(argPath))
+        } catch {
+          /* 무시: 화면에서 다시 열 수 있음 */
+        }
+      } else if (hash === 'assign') {
         openAssignSource(argPath)
           .then((s) => win!.webContents.send('assign:opened', s))
           .catch(() => undefined)
@@ -245,6 +255,12 @@ ipcMain.handle('tutorial:sample', () => {
   const target = join(dir, '튜토리얼_샘플.csv')
   copyFileSync(bundled, target)
   return openAssignSource(target)
+})
+
+const tools = registerToolIpc({
+  win: () => win!,
+  rules: async () => (await getRules()).effective,
+  convertSource: () => current
 })
 
 ipcMain.handle('shell:showItem', (_e, path: string) => shell.showItemInFolder(path))

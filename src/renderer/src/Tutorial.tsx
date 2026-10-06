@@ -1,18 +1,25 @@
 import { useState, type ReactNode } from 'react'
 
 const SEEN_KEY = 'pyro.tutorialSeen'
+/**
+ * 안내 내용 버전. 슬라이드를 바꾸면 올린다 → 업데이트 후 처음 켤 때 안내가 다시 뜬다.
+ * 1: v0.5.x까지, 2: v0.6.0 (④ 라벨 만들기·파일 도구)
+ */
+const TUTORIAL_VERSION = 2
 
-export function tutorialSeen(): boolean {
+/** new: 처음 실행, updated: 예전 안내만 봤음, seen: 지금 안내를 봤음 */
+export function tutorialStatus(): 'new' | 'updated' | 'seen' {
   try {
-    return localStorage.getItem(SEEN_KEY) === '1'
+    const v = Number(localStorage.getItem(SEEN_KEY) ?? 0)
+    return v >= TUTORIAL_VERSION ? 'seen' : v > 0 ? 'updated' : 'new'
   } catch {
-    return false
+    return 'new'
   }
 }
 
 function markSeen() {
   try {
-    localStorage.setItem(SEEN_KEY, '1')
+    localStorage.setItem(SEEN_KEY, String(TUTORIAL_VERSION))
   } catch {
     /* 저장 못 해도 다음에 다시 보일 뿐 */
   }
@@ -21,14 +28,16 @@ function markSeen() {
 interface Slide {
   title: string
   body: ReactNode
+  /** 이 안내 버전에서 새로 생긴 기능 */
+  isNew?: boolean
 }
 
 const SLIDES: Slide[] = [
   {
-    title: '불꽃쇼 CSV 자동 정리',
+    title: 'FASEE 불꽃쇼 CSV 자동 정리',
     body: (
       <>
-        <p>디자인 프로그램에서 뽑은 CSV를 현장에서 쓰는 Excel로 바꿔주는 프로그램입니다. 세 단계로 진행돼요.</p>
+        <p>디자인 프로그램에서 뽑은 CSV를 현장에서 쓰는 Excel과 라벨로 바꿔주는 프로그램입니다. 네 단계로 진행돼요.</p>
         <div className="flow">
           <div className="flow-box">
             원본 CSV
@@ -50,9 +59,17 @@ const SLIDES: Slide[] = [
             현장용 Excel
             <small>LAYOUT · 치구 배치도 · 타상 / 연발 / 단발</small>
           </div>
+          <div className="flow-arrow">
+            ④ 라벨 만들기
+            <span>→</span>
+          </div>
+          <div className="flow-box accent">
+            라벨
+            <small>폼텍 dgz</small>
+          </div>
         </div>
         <p className="hint">
-          화면 위의 ① › ② › ③ 순서대로 진행하고, 아래 “→” 버튼으로 다음 단계, “←” 버튼으로 이전 단계로 갑니다. 이미 주소가 매겨진 CSV라면 ③부터 바로 시작하면
+          화면 위의 ① › ② › ③ › ④ 순서대로 진행하고, 아래 “→” 버튼으로 다음 단계, “←” 버튼으로 이전 단계로 갑니다. 이미 주소가 매겨진 CSV라면 ③부터 바로 시작하면
           됩니다.
         </p>
       </>
@@ -110,7 +127,7 @@ const SLIDES: Slide[] = [
             처음 보는 POS(예: <span className="mono">FX-01</span>)가 있으면 <b>빨간 상자</b>에서 타상/연발/단발을 골라야 합니다.
           </li>
           <li>
-            <b>검증 결과</b>의 경고를 확인하고 <b>Excel 생성</b>을 누르면 끝!
+            <b>검증 결과</b>의 경고를 확인하고 <b>Excel 생성</b>을 누릅니다. 라벨도 필요하면 <b>④ 라벨 만들기 →</b>로 넘어갑니다.
           </li>
         </ol>
         <div className="legend">
@@ -121,6 +138,51 @@ const SLIDES: Slide[] = [
             <i className="swatch" style={{ background: 'var(--missing)' }} /> 주소없음
           </span>
         </div>
+      </>
+    )
+  },
+  {
+    title: '④ 라벨 만들기',
+    isNew: true,
+    body: (
+      <>
+        <ol className="steps">
+          <li>
+            ③에서 <b>④ 라벨 만들기 →</b>를 누르거나, 주소 매긴 CSV를 끌어다 놓습니다.
+          </li>
+          <li>
+            <b>행사명</b>을 확인합니다. 라벨마다 찍히고 파일 이름에도 들어가요.
+          </li>
+          <li>
+            <b>라벨 파일 만들기</b> → 폴더를 고르면 <span className="mono">라벨작업.xlsx</span>와{' '}
+            <span className="mono">행사명 타상/연발/단발.dgz</span>가 생깁니다. dgz를 더블클릭하면 <b>폼텍 DesignPro</b>가 바로 열려요 (3100 라벨지).
+          </li>
+        </ol>
+        <p className="hint">
+          직렬(한 핀에 여러 발)은 발마다 라벨 한 장. 각도는 왼쪽(−) CUSTOM1 · 수직(90) CUSTOM2 · 오른쪽(+) CUSTOM3. 타상 직렬은 제품명 뒤에 “2직”, 체인은 “3초
+          체인”.
+        </p>
+      </>
+    )
+  },
+  {
+    title: '파일 도구',
+    isNew: true,
+    body: (
+      <>
+        <p>
+          CSV를 <b>엑셀로 열었다 저장하면</b> 직렬 각도 <span className="mono">-60-60</span>이 <span className="mono">-120</span>으로, 주소{' '}
+          <span className="mono">030</span>이 <span className="mono">30</span>으로 바뀌어 버립니다. 오른쪽 위 <b>파일 도구</b>에서 해결해요.
+        </p>
+        <ol className="steps">
+          <li>
+            <b>엑셀 손상 복원</b>: 엑셀을 거치지 않은 원본과 엑셀로 저장한 파일(여러 개 가능)을 넣으면 엑셀이 바꾼 값만 되돌려{' '}
+            <span className="mono">_복원.csv</span>로 저장합니다.
+          </li>
+          <li>
+            <b>CSV 나누기</b>: FC별·구간별 파일을 엑셀 없이 만듭니다. 값이 깨지지 않고, PFT 같은 열도 지울 수 있어요.
+          </li>
+        </ol>
       </>
     )
   },
@@ -143,7 +205,7 @@ const SLIDES: Slide[] = [
     body: (
       <>
         <p>
-          가상의 샘플 CSV(60행)로 <b>주소 매기기 → 시트 정리 → Excel 생성</b>까지 따라해 볼 수 있어요. 단계마다 화면 위에 다음에 할 일이
+          가상의 샘플 CSV(60행)로 <b>주소 매기기 → 시트 정리 → Excel 생성 → 라벨 만들기</b>까지 따라해 볼 수 있어요. 단계마다 화면 위에 다음에 할 일이
           표시됩니다.
         </p>
         <p className="hint">튜토리얼 중에는 Rule이 저장되지 않습니다. 오른쪽 위 “사용법” 버튼으로 언제든 이 안내를 다시 볼 수 있어요.</p>
@@ -152,8 +214,9 @@ const SLIDES: Slide[] = [
   }
 ]
 
-export function TutorialModal({ onClose, onStartSample }: { onClose: () => void; onStartSample: () => void }) {
+export function TutorialModal({ onClose, onStartSample, updated = false }: { onClose: () => void; onStartSample: () => void; updated?: boolean }) {
   const [i, setI] = useState(0)
+  const newCount = SLIDES.filter((s) => s.isNew).length
   const last = i === SLIDES.length - 1
   const close = () => {
     markSeen()
@@ -168,12 +231,32 @@ export function TutorialModal({ onClose, onStartSample }: { onClose: () => void;
         <div className="modal-step">
           {i + 1} / {SLIDES.length}
         </div>
-        <h2>{SLIDES[i].title}</h2>
+        {updated && i === 0 && (
+          <div className="whats-new">
+            업데이트됐어요! 새 기능 {newCount}가지가 추가됐습니다:{' '}
+            {SLIDES.map((s, n) =>
+              s.isNew ? (
+                <button key={n} className="btn link" onClick={() => setI(n)}>
+                  {s.title}
+                </button>
+              ) : null
+            )}
+          </div>
+        )}
+        <h2>
+          {SLIDES[i].title}
+          {SLIDES[i].isNew && <span className="new-tag">NEW</span>}
+        </h2>
         <div className="modal-body">{SLIDES[i].body}</div>
         <div className="modal-foot">
           <div className="dots">
             {SLIDES.map((_, n) => (
-              <button key={n} className={`dot ${n === i ? 'on' : ''}`} onClick={() => setI(n)} aria-label={`${n + 1}번째`} />
+              <button
+                key={n}
+                className={`dot ${n === i ? 'on' : ''} ${SLIDES[n].isNew ? 'new' : ''}`}
+                onClick={() => setI(n)}
+                aria-label={`${n + 1}번째`}
+              />
             ))}
           </div>
           <div className="spacer" />

@@ -1,4 +1,5 @@
-import type { PositionRule, RuleSet, TypeRule } from './types'
+import { parsePosition } from './position'
+import type { PositionRule, Resolution, RuleSet, TypeRule } from './types'
 
 /** "3P-*" → "3P" */
 export function prefixOfPattern(pattern: string): string {
@@ -18,6 +19,13 @@ export function findTypeRule(rules: TypeRule[], type: string): TypeRule | undefi
   const t = type.trim().toLowerCase()
   if (!t) return undefined
   return rules.find((r) => r.type.trim().toLowerCase() === t)
+}
+
+/** 행 분류: Position Rule → 이번 작업에서 고른 분류 → TYPE Rule */
+export function resolveCategory(rules: RuleSet, resolutions: Record<string, Resolution>, pos: string, type: string): Resolution | undefined {
+  const parsed = parsePosition(pos)
+  const byPos = parsed ? (findPositionRule(rules.positionRules, parsed.prefix)?.category ?? resolutions[parsed.prefix]) : undefined
+  return byPos ?? findTypeRule(rules.typeRules, type)?.category
 }
 
 export interface LocalRules {

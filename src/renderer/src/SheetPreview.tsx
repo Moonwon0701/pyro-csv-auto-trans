@@ -65,18 +65,22 @@ export default function SheetPreview({ sheets }: { sheets: SheetModel[] }) {
       </div>
       <div className="preview-foot">
         <span>
-          원본 {sheet.sourceRowCount}행 → {sheet.rows.length}개 그룹
+          {sheet.plain ? `${sheet.rows.length}행` : `원본 ${sheet.sourceRowCount}행 → ${sheet.rows.length}개 그룹`}
           {blocks.length > 1 && ` · 표 ${blocks.length}개 (${blocks.map((b) => b.label).join(', ')})`}
           {totalRows > MAX_ROWS && ` (미리보기는 처음 ${MAX_ROWS}행)`}
         </span>
-        <span>
-          <span className="swatch" style={{ background: 'var(--conflict)' }} />
-          같은 위치 복수 주소
-        </span>
-        <span>
-          <span className="swatch" style={{ background: 'var(--missing)' }} />
-          주소없음
-        </span>
+        {!sheet.plain && (
+          <>
+            <span>
+              <span className="swatch" style={{ background: 'var(--conflict)' }} />
+              같은 위치 복수 주소
+            </span>
+            <span>
+              <span className="swatch" style={{ background: 'var(--missing)' }} />
+              주소없음
+            </span>
+          </>
+        )}
       </div>
     </div>
   )

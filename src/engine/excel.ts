@@ -27,7 +27,7 @@ function wholeSheet(sheet: SheetModel): SheetBlock {
  */
 export async function buildXlsx(sheets: SheetModel[], grids: GridSheet[] = []): Promise<Uint8Array> {
   const wb = new ExcelJS.Workbook()
-  wb.creator = 'Pyro CSV Organizer'
+  wb.creator = 'FASEE Pyro CSV Organizer'
   wb.created = new Date()
   const usedNames = new Set(sheets.map((s) => s.name.toLowerCase()))
   for (const g of grids) addGrid(wb, g, usedNames)

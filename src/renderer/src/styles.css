@@ -246,3 +246,22 @@ tr.selected td { background: var(--accent-soft) !important; }
 .tutorial-tag { background: var(--accent); color: #fff; font-weight: 700; font-size: 12px; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
 .tutorial-text { flex: 1; }
 .topbar .btn.small { margin-right: 4px; }
+
+/* 파일 도구 */
+.tools-page { flex: 1; overflow-y: auto; padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-content: start; }
+.dropbox-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.dropbox { border: 2px dashed var(--border); border-radius: var(--radius); padding: 12px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; min-height: 64px; font-size: 13px; }
+.dropbox.over, .dropbox:hover { border-color: var(--accent); background: var(--accent-soft); }
+.small-line { font-size: 12px; word-break: break-all; }
+.status-line { font-size: 13px; color: var(--muted); }
+.status-line.err { color: var(--danger); }
+.status-line.ok { color: var(--ok); }
+.chip.toggle { cursor: pointer; user-select: none; }
+.chip.toggle input { margin: 0 2px 0 0; vertical-align: -2px; }
+@media (max-width: 1200px) { .tools-page { grid-template-columns: 1fr; } }
+
+/* 업데이트 안내 */
+.whats-new { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 8px; padding: 8px 12px; font-size: 13px; margin: 6px 0 4px; }
+.whats-new .btn.link { margin-left: 8px; font-weight: 700; color: var(--accent); }
+.new-tag { display: inline-block; margin-left: 8px; vertical-align: 3px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 10px; }
+.dot.new:not(.on) { box-shadow: 0 0 0 2px var(--accent-soft); background: var(--accent); opacity: .45; }

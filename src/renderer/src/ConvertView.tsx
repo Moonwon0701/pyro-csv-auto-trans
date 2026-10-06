@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   CATEGORIES,
   DEFAULT_OPTIONS,
-  type Issue,
   type PositionRule,
   type Profile,
   type Resolution,
@@ -10,7 +9,8 @@ import {
   type TransformResult
 } from '@engine/types'
 import type { RulesState } from '../../main/rules-store'
-import type { OpenedFile } from '../../preload'
+import type { LabelSource, OpenedFile } from '../../preload'
+import IssueItem from './IssueItem'
 import PrefixCard from './PrefixCard'
 import SheetPreview from './SheetPreview'
 import { TutorialBanner } from './Tutorial'
@@ -29,6 +29,8 @@ interface Props {
   backLabel?: string
   /** ① 치구 배치에서 이번 작업에만 쓰기로 고른 접두어 분류 (Rule로 저장하지 않은 것) */
   presetResolutions?: Record<string, Resolution>
+  /** 같은 파일로 ④ 라벨 만들기 (여기서 고른 접두어 분류도 함께) */
+  onSendToLabels: (f: LabelSource, resolutions: Record<string, Resolution>) => void
 }
 
 function optionsFromProfile(p: Profile | undefined): TransformOptions {
@@ -55,7 +57,8 @@ export default function ConvertView({
   onExitTutorial,
   onBack,
   backLabel,
-  presetResolutions
+  presetResolutions,
+  onSendToLabels
 }: Props) {
   const [file, setFile] = useState<OpenedFile | null>(null)
   const [result, setResult] = useState<TransformResult | null>(null)
@@ -195,16 +198,16 @@ export default function ConvertView({
   const singleControl = (a?.controls.length ?? 0) <= 1
 
   const tutorialBanner = !tutorial ? null : unresolved.length > 0 ? (
-    <TutorialBanner step="2/3" onExit={onExitTutorial}>
+    <TutorialBanner step="2/4" onExit={onExitTutorial}>
       처음 보는 Prefix <span className="mono">{unresolved.map((m) => m.prefix + '-*').join(', ')}</span>가 있어서 Excel 생성이 막혀 있어요. 왼쪽{' '}
       <b>빨간 상자</b>에서 분류를 고르세요. (샘플의 7P는 7인치 타상이에요)
     </TutorialBanner>
   ) : status.kind === 'ok' ? (
-    <TutorialBanner step="완료" onExit={onExitTutorial}>
-      🎉 끝! 아래 <b>폴더 열기</b>로 만든 Excel을 확인해 보세요. 이제 실제 CSV로 똑같이 하면 됩니다.
+    <TutorialBanner step="3/4" onExit={onExitTutorial}>
+      Excel 완성! 아래 <b>폴더 열기</b>로 확인해 보세요. 마지막으로 아래 <b>④ 라벨 만들기 →</b>를 눌러 라벨 파일도 만들어 봐요.
     </TutorialBanner>
   ) : (
-    <TutorialBanner step="3/3" onExit={onExitTutorial}>
+    <TutorialBanner step="3/4" onExit={onExitTutorial}>
       오른쪽 미리보기에서 <b>시트 탭</b>을 눌러 결과를 확인하고(같은 시간·같은 효과는 한 줄로 합쳐져요), 아래 <b>Excel 생성</b>을 누르세요.
     </TutorialBanner>
   )
@@ -468,32 +471,19 @@ export default function ConvertView({
         <button className="btn primary big" disabled={!a || a.blocked || busy} onClick={generate}>
           Excel 생성
         </button>
+        <button
+          className="btn big"
+          disabled={!a || busy}
+          onClick={() =>
+            window.api
+              .labelsFromConvert()
+              .then((f) => onSendToLabels(f, resolutions))
+              .catch((e) => setStatus({ kind: 'err', text: String(e.message ?? e) }))
+          }
+        >
+          ④ 라벨 만들기 →
+        </button>
       </div>
     </>
-  )
-}
-
-function IssueItem({ issue }: { issue: Issue }) {
-  const hasMore = (issue.details?.length ?? 0) > 0 || (issue.lines?.length ?? 0) > 0
-  const label = (
-    <>
-      {issue.message}
-      {issue.count && issue.count > 1 ? <b> ({issue.count}건)</b> : null}
-    </>
-  )
-  if (!hasMore) return <div className={`issue ${issue.severity}`}>{label}</div>
-  return (
-    <details className={`issue ${issue.severity}`}>
-      <summary>{label}</summary>
-      <div className="detail">
-        {issue.details?.map((d, i) => <div key={i}>{d}</div>)}
-        {!issue.details && issue.lines && (
-          <div>
-            CSV 줄: {issue.lines.join(', ')}
-            {(issue.count ?? 0) > issue.lines.length && ' …'}
-          </div>
-        )}
-      </div>
-    </details>
   )
 }
