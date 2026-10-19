@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { DEFAULT_JIG_PREFIXES } from '@engine/jig'
+import { isDefaultWheelPrefix } from '@engine/assign'
 import { CATEGORIES, EXCLUDE, outputPrefixOf, type PositionRule, type Resolution } from '@engine/types'
 import type { RulesState } from '../../main/rules-store'
 
@@ -99,6 +100,7 @@ export default function RulesView({ rules, onRulesChanged }: Props) {
               <th>변환</th>
               <th>출처</th>
               <th title="② 치구 배치에서 각도순으로 치구에 꽂는 위치 (단발만)">치구</th>
+              <th title="원판에 꽂는 휠 군. 군마다 먼저 나가는 약부터 16발씩 모듈 하나에 주소를 매깁니다">휠</th>
               <th>사용</th>
               <th />
             </tr>
@@ -135,6 +137,16 @@ export default function RulesView({ rules, onRulesChanged }: Props) {
                         type="checkbox"
                         checked={r.jig ?? DEFAULT_JIG_PREFIXES.includes(p)}
                         onChange={(e) => upsert({ ...r, jig: e.target.checked })}
+                      />
+                    )}
+                  </td>
+                  <td>
+                    {r.category !== EXCLUDE && (
+                      <input
+                        className="toggle"
+                        type="checkbox"
+                        checked={r.wheel ?? isDefaultWheelPrefix(p)}
+                        onChange={(e) => upsert({ ...r, wheel: e.target.checked })}
                       />
                     )}
                   </td>

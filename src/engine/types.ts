@@ -31,6 +31,8 @@ export interface PositionRule {
   created_at?: string
   /** 치구(단발 거치대)에 꽂는 위치. ① 치구 배치에서 각도순으로 나누고 그 순서대로 주소를 매긴다 */
   jig?: boolean
+  /** 휠(원판) 군. 위치가 아니라 군마다, 먼저 나가는 약부터 16발씩 한 모듈에 주소를 매긴다. 없으면 H, H1, H2 … 접두어 */
+  wheel?: boolean
 }
 
 export interface TypeRule {

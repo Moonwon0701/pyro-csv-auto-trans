@@ -6,6 +6,7 @@
  * - Position마다 주소 범위를 정하고, 그 안에서 순서대로 핀을 채운다.
  * - Position 안의 순서: 효과순(Effect Description 알파벳순 → 시간순) 또는 시간순
  * - 이미 주소가 있는 행은 그대로 두고, 그 주소는 다른 행에 쓰지 않는다.
+ * - H군(휠, 원판): 위치가 아니라 군(H1, H2 …)마다 묶어서, 군 안에서 먼저 나가는 약부터 16발씩 한 모듈을 쓴다.
  */
 import { detectColumns } from './columns'
 import { parsePosition } from './position'
@@ -72,6 +73,22 @@ export function formatRanges(ranges: AddressRange[]): string {
 
 export type SortMode = 'effect' | 'time'
 
+/** 휠(원판) 군의 기본 접두어: H, H1, H2 … (Rule의 wheel로 켜고 끌 수 있다) */
+export const isDefaultWheelPrefix = (prefix: string) => /^H\d*$/.test(prefix)
+
+/** 휠 군에 속한 위치면 군 이름(접두어, 예: "H1"), 아니면 null */
+export function wheelGroupOf(rules: RuleSet, pos: string): string | null {
+  const parsed = parsePosition(pos)
+  if (!parsed) return null
+  const rule = findPositionRule(rules.positionRules, parsed.prefix)
+  if (!rule || rule.category === '제외') return null
+  return (rule.wheel ?? isDefaultWheelPrefix(parsed.prefix)) ? parsed.prefix : null
+}
+
+/** 휠 군 하나를 주소 계획의 한 줄로 쓸 때의 이름: "H1" → "H1-*" */
+export const wheelSlotName = (group: string) => `${group}-*`
+const wheelGroupOfSlot = (pos: string) => pos.replace(/-\*$/, '')
+
 export interface PositionSlot {
   control: string
   pos: string
@@ -82,12 +99,17 @@ export interface PositionSlot {
   /** 새로 필요한 핀 수 */
   needed: number
   existing: string[]
+  /** 휠 군이면 pos는 "H1-*"이고, 여기에 군에 속한 위치들이 들어 있다 */
+  wheel?: string[]
 }
 
 export interface AssignPlanEntry {
   control: string
+  /** 휠 군이면 "H1-*" */
   pos: string
   ranges: string
+  /** 휠 군: 군 안의 모든 위치를 시간순으로 16발씩 모듈 하나에 매긴다 */
+  wheel?: boolean
 }
 
 export interface AssignOptions {
@@ -98,7 +120,7 @@ export interface AssignOptions {
 const keyOf = (control: string, pos: string) => `${control}\u0000${pos}`
 const naturalCompare = (a: string, b: string) => a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' })
 
-/** 원본 CSV에서 Control × POS 목록과 필요한 핀 수를 뽑는다 */
+/** 원본 CSV에서 Control × POS 목록과 필요한 핀 수를 뽑는다. 휠 군은 군마다 한 줄로 묶는다 */
 export function listPositions(csv: ParsedCsv, rules: RuleSet): PositionSlot[] {
   const cols = detectColumns(csv.headers)
   const get = (row: string[], k: 'CONTROL' | 'POS' | 'ADDR') => {
@@ -108,16 +130,19 @@ export function listPositions(csv: ParsedCsv, rules: RuleSet): PositionSlot[] {
   const map = new Map<string, PositionSlot>()
   for (const row of csv.rows) {
     const control = get(row, 'CONTROL')
-    const pos = get(row, 'POS')
-    if (!pos) continue
+    const rowPos = get(row, 'POS')
+    if (!rowPos) continue
+    const group = wheelGroupOf(rules, rowPos)
+    const pos = group ? wheelSlotName(group) : rowPos
     let slot = map.get(keyOf(control, pos))
     if (!slot) {
-      const parsed = parsePosition(pos)
+      const parsed = parsePosition(rowPos)
       const rule = parsed ? findPositionRule(rules.positionRules, parsed.prefix) : undefined
       const category = rule && rule.category !== '제외' ? rule.category : null
-      slot = { control, pos, category, rows: 0, assigned: 0, needed: 0, existing: [] }
+      slot = { control, pos, category, rows: 0, assigned: 0, needed: 0, existing: [], ...(group ? { wheel: [] } : {}) }
       map.set(keyOf(control, pos), slot)
     }
+    if (slot.wheel && !slot.wheel.includes(rowPos)) slot.wheel.push(rowPos)
     slot.rows++
     const addr = get(row, 'ADDR')
     if (addr) {
@@ -126,6 +151,7 @@ export function listPositions(csv: ParsedCsv, rules: RuleSet): PositionSlot[] {
     } else slot.needed++
   }
   const catOrder = (c: Category | null) => (c ? CATEGORIES.indexOf(c) : CATEGORIES.length)
+  for (const s of map.values()) s.wheel?.sort(naturalCompare)
   return [...map.values()].sort(
     (a, b) => naturalCompare(a.control, b.control) || catOrder(a.category) - catOrder(b.category) || naturalCompare(a.pos, b.pos)
   )
@@ -149,8 +175,9 @@ export function proposePlan(slots: PositionSlot[], startModule = DEFAULT_START_M
     const used = new Set(list.flatMap((s) => s.existing.map(addressToIndex).filter((x): x is number => x !== null)))
     let cursor = start
     for (const s of list) {
+      const wheel = s.wheel ? { wheel: true } : {}
       if (s.needed === 0) {
-        plan.push({ control, pos: s.pos, ranges: '' })
+        plan.push({ control, pos: s.pos, ranges: '', ...wheel })
         continue
       }
       // 새 모듈에서 시작
@@ -164,7 +191,7 @@ export function proposePlan(slots: PositionSlot[], startModule = DEFAULT_START_M
         last = i
         count++
       }
-      plan.push({ control, pos: s.pos, ranges: `${indexToAddress(first)}-${indexToAddress(last)}` })
+      plan.push({ control, pos: s.pos, ranges: `${indexToAddress(first)}-${indexToAddress(last)}`, ...wheel })
       cursor = last + 1
       const reserve = jigModules?.get(keyOf(control, s.pos))
       if (reserve) cursor = Math.max(cursor, Math.floor(first / PINS_PER_MODULE) * PINS_PER_MODULE + reserve * PINS_PER_MODULE)
@@ -226,9 +253,12 @@ export function assignAddresses(csv: ParsedCsv, opts: AssignOptions): AssignResu
   const effect = (r: string[]) => val(r, 'EFFECT').toLowerCase()
 
   for (const entry of opts.plan) {
+    // 휠 군이면 군에 속한 위치 전부, 아니면 그 위치만
+    const group = entry.wheel ? wheelGroupOfSlot(entry.pos) : null
+    const mine = (pos: string) => (group === null ? pos === entry.pos : parsePosition(pos)?.prefix === group)
     const target = rows
       .map((r, i) => ({ r, i }))
-      .filter(({ r }) => val(r, 'CONTROL') === entry.control && val(r, 'POS') === entry.pos && !val(r, 'ADDR'))
+      .filter(({ r }) => val(r, 'CONTROL') === entry.control && mine(val(r, 'POS')) && !val(r, 'ADDR'))
     if (target.length === 0) continue
     const label = `${entry.control ? entry.control + ' ' : ''}${entry.pos}`
     const { ranges, errors } = parseRanges(entry.ranges)
@@ -238,8 +268,12 @@ export function assignAddresses(csv: ParsedCsv, opts: AssignOptions): AssignResu
       summary.push({ control: entry.control, pos: entry.pos, rows: target.length, newAddresses: 0, range: entry.ranges, error })
       continue
     }
+    const posNumber = (r: string[]) => parsePosition(val(r, 'POS'))?.number ?? 0
     target.sort((a, b) =>
-      opts.sortMode === 'effect'
+      group !== null
+        ? // 휠: 먼저 나가는 약부터, 동시에 나가면 위치 번호순
+          time(a.r) - time(b.r) || posNumber(a.r) - posNumber(b.r) || a.i - b.i
+        : opts.sortMode === 'effect'
         ? (effect(a.r) < effect(b.r) ? -1 : effect(a.r) > effect(b.r) ? 1 : 0) || time(a.r) - time(b.r) || a.i - b.i
         : time(a.r) - time(b.r) || a.i - b.i
     )
@@ -249,9 +283,11 @@ export function assignAddresses(csv: ParsedCsv, opts: AssignOptions): AssignResu
     outer: for (const range of ranges) {
       const end = range.end ?? MAX_INDEX
       for (let i = range.start; i <= end && got.length < target.length; i++) {
+        // 휠: 16발마다 새 모듈에서 시작
+        if (group !== null && got.length % PINS_PER_MODULE === 0 && i % PINS_PER_MODULE !== 0) continue
         const owner = used.get(i)
         if (owner !== undefined) {
-          if (owner !== entry.pos) collisions.add(`${indexToAddress(i)}(${owner})`)
+          if (!mine(owner)) collisions.add(`${indexToAddress(i)}(${owner})`)
           continue
         }
         got.push(i)
@@ -272,10 +308,27 @@ export function assignAddresses(csv: ParsedCsv, opts: AssignOptions): AssignResu
       summary.push({ control: entry.control, pos: entry.pos, rows: target.length, newAddresses: got.length, range: entry.ranges, error })
       continue
     }
-    target.forEach(({ i }, n) => {
+    target.forEach(({ r, i }, n) => {
       rows[i][addrCol] = indexToAddress(got[n])
-      used.set(got[n], entry.pos)
+      used.set(got[n], val(r, 'POS'))
     })
+    if (group !== null) {
+      // 16발 묶음이 기존 주소 때문에 두 모듈에 걸쳤는지
+      const split: string[] = []
+      for (let n = 0; n < got.length; n += PINS_PER_MODULE) {
+        const chunk = got.slice(n, n + PINS_PER_MODULE)
+        const mods = new Set(chunk.map((x) => Math.floor(x / PINS_PER_MODULE)))
+        if (mods.size > 1) split.push(`${indexToAddress(chunk[0])}~${indexToAddress(chunk[chunk.length - 1])}`)
+      }
+      if (split.length) {
+        issues.push({
+          code: 'WHEEL_SPLIT',
+          severity: 'warning',
+          message: `${label}: 이미 쓰인 주소 때문에 16발 묶음이 두 모듈에 걸쳤습니다`,
+          details: split
+        })
+      }
+    }
     summary.push({
       control: entry.control,
       pos: entry.pos,

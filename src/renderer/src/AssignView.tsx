@@ -32,7 +32,13 @@ export default function AssignView({ active, tutorial, onExitTutorial, incoming,
   const [status, setStatus] = useState<{ kind: 'ok' | 'err' | ''; text: string; path?: string }>({ kind: '', text: '' })
 
   const plan: AssignPlanEntry[] = useMemo(
-    () => (source?.positions ?? []).map((p) => ({ control: p.control, pos: p.pos, ranges: ranges[keyOf(p.control, p.pos)] ?? '' })),
+    () =>
+      (source?.positions ?? []).map((p) => ({
+        control: p.control,
+        pos: p.pos,
+        ranges: ranges[keyOf(p.control, p.pos)] ?? '',
+        ...(p.wheel ? { wheel: true } : {})
+      })),
     [source, ranges]
   )
   const opts: AssignOptions = { sortMode, plan }
@@ -219,6 +225,16 @@ export default function AssignView({ active, tutorial, onExitTutorial, incoming,
             </p>
           </div>
 
+          {source.positions.some((p) => p.wheel) && (
+            <div className="card">
+              <h3>H군 (휠)</h3>
+              <p className="hint" style={{ margin: 0 }}>
+                원판에 꽂는 H군은 위치가 아니라 <b>군(H1, H2 …)마다</b> 한 줄로 묶습니다. 군 안에서 먼저 나가는 약부터 <b>16발씩 모듈 하나</b>를
+                씁니다 (동시에 나가면 위치 번호순). 위의 “위치 안의 순서”는 적용되지 않습니다.
+              </p>
+            </div>
+          )}
+
           <div className="card">
             <h3>검증 결과</h3>
             {!run || run.issues.length === 0 ? (
@@ -252,7 +268,10 @@ export default function AssignView({ active, tutorial, onExitTutorial, incoming,
                     return (
                       <tr key={k}>
                         {controls.length > 1 || controls[0] ? <td>{p.control}</td> : null}
-                        <td className="mono">{p.pos}</td>
+                        <td className="mono" title={p.wheel?.join(', ')}>
+                          {p.pos}
+                          {p.wheel && <span className="hint"> (휠 {p.wheel.length}개)</span>}
+                        </td>
                         <td>{p.category ? <span className={`cat ${p.category}`}>{p.category}</span> : <span className="hint">—</span>}</td>
                         <td className="num">{p.rows}</td>
                         <td className="num">{p.assigned || ''}</td>

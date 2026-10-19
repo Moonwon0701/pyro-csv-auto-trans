@@ -10,7 +10,7 @@
  *   치구 하나에는 모듈 여러 개가 들어갈 수 있다. 걸침을 허용하면 치구는 줄지만 걸친 핀은 현장 결선 대상.
  * - TILT는 바닥 기준 각도(90 = 수직), 부호는 좌우.
  */
-import { addressToIndex, assignAddresses, indexToAddress, MODULES, PINS_PER_MODULE, type AssignOptions, type AssignResult } from './assign'
+import { addressToIndex, assignAddresses, indexToAddress, MODULES, PINS_PER_MODULE, wheelGroupOf, type AssignOptions, type AssignResult } from './assign'
 import { detectColumns } from './columns'
 import { parsePosition } from './position'
 import { findPositionRule, findTypeRule } from './rules'
@@ -150,7 +150,8 @@ export function isJigPosition(rules: RuleSet, pos: string): boolean {
   const parsed = parsePosition(pos)
   if (!parsed) return false
   const rule = findPositionRule(rules.positionRules, parsed.prefix)
-  if (!rule || rule.category !== '단발') return false
+  // 휠(H군)은 치구가 아니라 원판에 꽂는다
+  if (!rule || rule.category !== '단발' || wheelGroupOf(rules, pos)) return false
   return rule.jig ?? DEFAULT_JIG_PREFIXES.includes(parsed.prefix)
 }
 
