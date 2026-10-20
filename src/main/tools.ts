@@ -54,9 +54,13 @@ export interface SplitSource extends FileInfo {
 
 export interface LabelSource extends FileInfo {
   showName: string
+  /** ③ 시트 정리에서 넘겨받아 ③에 열린 데이터를 따라가는 중 */
+  fromConvert: boolean
 }
 
 export interface LabelRun {
+  /** 이번에 라벨을 만든 데이터 (③을 따라가면 넘겨받은 뒤 바뀌었을 수 있다) */
+  source: LabelSource
   counts: LabelCount[]
   issues: Issue[]
   /** 미리보기: 타상·연발·단발 시트 */
@@ -164,9 +168,17 @@ export function registerToolIpc(deps: {
 
   // ---- ④ 라벨 만들기 ----
   let labelSource: Loaded | null = null
-  const openLabel = (l: Loaded): LabelSource => {
+  /**
+   * ③에서 넘겨받았으면 그 뒤에도 ③에 지금 열린 데이터로 만든다.
+   * ②에서 주소를 다시 매겨 ③만 새로 저장하고 ④ 탭을 눌러도 라벨이 옛 주소로 나가지 않게.
+   */
+  let labelFollowsConvert = false
+  const labelData = () => (labelFollowsConvert ? (deps.convertSource() ?? labelSource) : labelSource)
+  const labelInfo = (l: Loaded): LabelSource => ({ ...info(l), showName: guessShowName(l.csv.fileName), fromConvert: labelFollowsConvert })
+  const openLabel = (l: Loaded, fromConvert = false): LabelSource => {
     labelSource = l
-    return { ...info(l), showName: guessShowName(l.csv.fileName) }
+    labelFollowsConvert = fromConvert
+    return labelInfo(l)
   }
   ipcMain.handle('labels:open', (_e, path: string) => openLabel(load(path)))
   ipcMain.handle('labels:pick', async () => {
@@ -176,22 +188,23 @@ export function registerToolIpc(deps: {
   ipcMain.handle('labels:fromConvert', () => {
     const c = deps.convertSource()
     if (!c) throw new Error('③ 시트 정리에 열린 파일이 없습니다.')
-    return openLabel(c)
+    return openLabel(c, true)
   })
   const runLabels = async (resolutions: Record<string, Resolution>) => {
-    if (!labelSource) throw new Error('CSV를 먼저 넣으세요.')
-    return buildLabelSheets(labelSource.csv, await deps.rules(), resolutions)
+    const source = labelData()
+    if (!source) throw new Error('CSV를 먼저 넣으세요.')
+    return { source, ...buildLabelSheets(source.csv, await deps.rules(), resolutions) }
   }
   ipcMain.handle('labels:run', async (_e, resolutions: Record<string, Resolution>): Promise<LabelRun> => {
     const r = await runLabels(resolutions)
-    return { counts: r.counts, issues: r.issues, sheets: r.sheets.filter((s) => s.category !== '원본') }
+    return { source: labelInfo(r.source), counts: r.counts, issues: r.issues, sheets: r.sheets.filter((s) => s.category !== '원본') }
   })
   ipcMain.handle('labels:save', async (_e, resolutions: Record<string, Resolution>, showName: string): Promise<SavedFiles | null> => {
     const r = await runLabels(resolutions)
-    const src = labelSource!.path
+    const src = r.source.path
     const dir = await chooseFolder(deps.win(), '라벨 파일(xlsx·dgz)을 저장할 폴더', dirname(src))
     if (!dir) return null
-    const show = safeFilePart(showName) || guessShowName(labelSource!.csv.fileName)
+    const show = safeFilePart(showName) || guessShowName(r.source.csv.fileName)
     const xlsxBase = `${safeFilePart(baseName(src))} 라벨작업`
     const xlsx = await buildXlsx(r.sheets)
     const files = [join(dir, `${xlsxBase}.xlsx`)]

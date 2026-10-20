@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Resolution } from '@engine/types'
 import type { LabelRun, LabelSource } from '../../preload'
 import IssueItem from './IssueItem'
@@ -30,6 +30,8 @@ export default function LabelView({ active, incoming, presetResolutions, rulesRe
   const [dragOver, setDragOver] = useState(false)
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState<{ kind: 'ok' | 'err' | ''; text: string; path?: string }>({ kind: '', text: '' })
+  /** 지금 라벨을 만드는 데이터의 경로 (③을 따라가다 바뀌는지 본다) */
+  const sourcePath = useRef('')
 
   useEffect(() => {
     if (incoming) load(Promise.resolve(incoming))
@@ -39,17 +41,24 @@ export default function LabelView({ active, incoming, presetResolutions, rulesRe
     window.api.onLabelsOpened((f) => load(Promise.resolve(f)))
   }, [])
 
+  // ③에서 넘겨받은 파일은 ③에 지금 열린 데이터를 따라가므로 ④에 들어올 때마다 다시 만든다
   useEffect(() => {
-    if (!file) return
+    if (!file || !active) return
     let cancelled = false
     window.api
       .labelsRun(presetResolutions)
-      .then((r) => !cancelled && setRun(r))
+      .then((r) => {
+        if (cancelled) return
+        // ③에서 다른 공연 파일을 열었으면 행사명도 그 파일 것으로
+        if (r.source.path !== sourcePath.current) setShowName(r.source.showName)
+        sourcePath.current = r.source.path
+        setRun(r)
+      })
       .catch((e) => !cancelled && setStatus({ kind: 'err', text: String(e.message ?? e) }))
     return () => {
       cancelled = true
     }
-  }, [file, presetResolutions, rulesRev])
+  }, [file, presetResolutions, rulesRev, active])
 
   useEffect(() => {
     if (!active) return
@@ -71,6 +80,7 @@ export default function LabelView({ active, incoming, presetResolutions, rulesRe
   function load(p: Promise<LabelSource | null>) {
     p.then((f) => {
       if (!f) return
+      sourcePath.current = f.path
       setFile(f)
       setShowName(f.showName)
       setRun(null)
@@ -112,6 +122,7 @@ export default function LabelView({ active, incoming, presetResolutions, rulesRe
     )
   }
 
+  const source = run?.source ?? file
   const damaged = run?.issues.some((i) => i.code === 'LABEL_TILT_DAMAGED')
   const total = run?.counts.reduce((n, c) => n + c.labels, 0) ?? 0
 
@@ -131,9 +142,10 @@ export default function LabelView({ active, incoming, presetResolutions, rulesRe
         <div className="side">
           <div className="card file-card">
             <div style={{ flex: 1 }}>
-              <div className="name">{file.fileName}</div>
+              <div className="name">{source.fileName}</div>
               <div className="meta">
-                {file.rows.toLocaleString()}행 · {file.encoding}
+                {source.rows.toLocaleString()}행 · {source.encoding}
+                {source.fromConvert && ' · ③ 시트 정리와 같은 데이터'}
               </div>
             </div>
             <button className="btn small" onClick={() => load(window.api.labelsPick())}>
