@@ -5,6 +5,8 @@ import {
   assignAddresses,
   assignWithJigs,
   DEFAULT_JIG_SETTINGS,
+  innerLowCount,
+  isLowLeft,
   jigModuleNeeds,
   leanOf,
   listPositions,
@@ -165,6 +167,40 @@ describe('치구 배치: 주소 재배정', () => {
     expect(preview.csv.rows).toEqual(csv.rows) // 원본은 그대로
     const assigned = assignWithJigs(csv, { sortMode: 'effect', plan: proposePlan(listPositions(csv, RULES), '01', jigModuleNeeds(csv, RULES)) }, RULES)
     expect(assigned.jigPositions[0].cues.map((c) => `${c.effect}=${c.address}`)).toEqual(['B=010', 'A=011', 'C=012'])
+  })
+
+  it('30° 20발은 치구 하나 (혜원 2026-10-22)', () => {
+    const r = planJigs(csvOf([...singles(16, () => 30), ...singles(4, () => 30, 'S-01', 2)]), RULES)
+    expect(r.positions[0].jigs).toHaveLength(1)
+  })
+
+  it('30° 미만은 줄 끝 칸에만: 치구 하나에 왼쪽 4발까지, 넘치면 치구마다 나눠 끼운다', () => {
+    // -15 10발 + 90 30발 = 40발 → 왼쪽 끝 칸이 치구마다 4칸이라 치구 3개
+    const tilt = (i: number) => (i < 10 ? -15 : 90)
+    const lines = [...singles(16, tilt), ...singles(16, (i) => tilt(i + 16), 'S-01', 2), ...singles(8, () => 90, 'S-01', 3)]
+    const p = planJigs(csvOf(lines), RULES).positions[0]
+    expect(p.jigs).toHaveLength(3)
+    expect(p.lowerBound.jigs).toBe(3)
+    for (const jig of p.jigs) {
+      expect(innerLowCount(jig.grid)).toBe(0)
+      expect(jig.grid.flat().filter((s) => s && isLowLeft(s.tilt)).length).toBeLessThanOrEqual(4)
+    }
+  })
+
+  it('30° 미만 왼쪽은 1칸, 오른쪽은 줄이 덜 차도 제일 오른쪽 칸', () => {
+    const grid = placeInGrid([-10, 90, 10, 0].map((tilt, cue) => ({ cue, shot: 1, tilt })), 4, 5)
+    expect(innerLowCount(grid)).toBe(0)
+    expect(grid[0][0]!.tilt).toBe(-10)
+    expect(grid[2][4]!.tilt).toBe(10)
+    expect(grid[3][4]!.tilt).toBe(0)
+  })
+
+  it('왼쪽 4·오른쪽 4·수직 12 = 20발 한 치구', () => {
+    const lines = [...singles(16, (i) => (i < 4 ? -10 : i < 8 ? 15 : 90)), ...singles(4, () => 90, 'S-01', 2)]
+    const r = planJigs(csvOf(lines), RULES)
+    expect(r.positions[0].jigs).toHaveLength(1)
+    expect(innerLowCount(r.positions[0].jigs[0].grid)).toBe(0)
+    expect(r.issues.find((i) => i.code === 'JIG_TILT_LOW')!.severity).toBe('info')
   })
 
   it('30° 미만 각도와 추정 각도는 경고', () => {
