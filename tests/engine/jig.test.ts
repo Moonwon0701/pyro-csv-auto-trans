@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   assignAddresses,
   assignWithJigs,
+  calibreMm,
   DEFAULT_JIG_SETTINGS,
   innerLowCount,
   isLowLeft,
@@ -201,6 +202,40 @@ describe('치구 배치: 주소 재배정', () => {
     expect(r.positions[0].jigs).toHaveLength(1)
     expect(innerLowCount(r.positions[0].jigs[0].grid)).toBe(0)
     expect(r.issues.find((i) => i.code === 'JIG_TILT_LOW')!.severity).toBe('info')
+  })
+
+  it('약 지름: 효과 설명의 mm·인치 → CAL', () => {
+    expect(calibreMm('30mm crackle stars mine', '31')).toBe(30)
+    expect(calibreMm('1.2" silver strobe bouquet', '30')).toBe(30)
+    expect(calibreMm('1.75" blue bouquet', '44')).toBe(43.75)
+    expect(calibreMm('silver strobe', '30')).toBe(30)
+    expect(calibreMm('silver strobe', '1')).toBeNull()
+  })
+
+  it('30mm는 같은 각도 두 발이 한 칸: 30mm 40발(각도 2종)은 치구 하나', () => {
+    // 30mm 90° 16발 + 30mm 60° 16발 + 30mm 60° 8발 = 40발 → 20칸
+    const lines = [...singles(16, () => 90), ...singles(16, () => 60, 'S-01', 2), ...singles(8, () => 60, 'S-01', 3)].map((l) => l.replace(/,E(\d+),/, ',30mm E$1,'))
+    const p = planJigs(csvOf(lines), RULES).positions[0]
+    expect(p.jigs).toHaveLength(1)
+    expect(p.modules).toHaveLength(3)
+    const cells = p.jigs[0].grid.flat().filter(Boolean)
+    expect(cells).toHaveLength(20)
+    expect(cells.every((s) => s!.pair && s!.pair.tilt === s!.tilt)).toBe(true)
+  })
+
+  it('30mm라도 각도가 다르거나 30mm가 아니면 따로 칸', () => {
+    const grid = placeInGrid(
+      [60, 60, 70, 60].map((tilt, cue) => ({ cue, shot: 1, tilt })),
+      4,
+      5,
+      (s) => s.cue !== 3
+    )
+    const cells = grid.flat().filter(Boolean)
+    expect(cells).toHaveLength(3)
+    expect(cells.filter((s) => s!.pair)).toHaveLength(1)
+    // 45mm는 짝이 없다: 24발이면 치구 2개
+    const p = planJigs(csvOf([...singles(16, () => 90), ...singles(8, () => 90, 'S-01', 2)].map((l) => l.replace(/,E(\d+),/, ',45mm E$1,'))), RULES).positions[0]
+    expect(p.jigs).toHaveLength(2)
   })
 
   it('30° 미만 각도와 추정 각도는 경고', () => {

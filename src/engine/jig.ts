@@ -5,6 +5,7 @@
  * - 치구 하나는 4×5칸(가로 5칸 × 4줄). 모든 칸을 바닥 기준 30°까지 눕힐 수 있다 (30° 20발이면 한 치구).
  *   30°보다 더 눕히는 약(0°, 10°, 15° …)은 줄의 제일 왼쪽·오른쪽 칸에만 꽂는다. 가운데 칸은 30°까지 (혜원 2026-10-22)
  *   → 치구 하나에 왼쪽으로 낮은 약 4발(줄 수), 오른쪽으로 낮은 약 4발까지.
+ * - 30mm 단발은 각도가 같으면 한 칸에 두 발까지 (2026-10-23) → 치구 용량·끝 칸 수는 발이 아니라 칸으로 센다.
  * - 가로 한 줄에서 바깥쪽은 많이 눕히고 가운데로 갈수록 세운다 → 줄마다 각도 오름차순으로 꽂으면 서로 겨누지 않는다.
  * - 직렬: 한 핀(CSV 한 행)에 약 QTY발. TILT는 발마다 '-'로 이어 적는다 ("-75--45-75" = -75, -45, 75).
  * - 치구마다 모듈을 미리 결선해서 현장에 가져간다. 모듈 하나가 치구 두 개에 걸치면 한쪽만 미리 결선할 수 있고
@@ -30,6 +31,47 @@ export const leanOf = (tilt: number) => (tilt >= 0 ? VERTICAL - tilt : -(VERTICA
 /** 30°보다 더 눕혀 줄 끝 칸에만 꽂는 약: 왼쪽(음수)·오른쪽(0 이상) */
 export const isLowLeft = (tilt: number) => tilt < 0 && -tilt < MIN_TILT
 export const isLowRight = (tilt: number) => tilt >= 0 && tilt < MIN_TILT
+
+/** 이 지름(mm) 이하 단발은 같은 각도끼리 치구 한 칸에 두 발 */
+export const PAIR_MAX_MM = 30
+
+/**
+ * 약 지름(mm): 효과 설명의 "30mm" → '1.2"' (업계 표기 1인치 = 25mm: 1.75" = 44mm, 2" = 50mm) → CAL 열.
+ * 효과 설명을 먼저 보는 이유: 방위는 30mm 약이 CAL 31, 울주는 CAL이 전부 1이다. CAL이 10 미만이면 지름으로 보지 않는다.
+ */
+export function calibreMm(effect: string, cal = ''): number | null {
+  const mm = effect.match(/(\d+(?:\.\d+)?)\s*mm/i)
+  if (mm) return Number(mm[1])
+  const inch = effect.match(/(\d+(?:\.\d+)?)\s*(?:"|”|''|inch)/i)
+  if (inch) return Number(inch[1]) * 25
+  const c = Number(cal)
+  return cal.trim() && Number.isFinite(c) && c >= 10 ? c : null
+}
+
+export const isPairable = (effect: string, cal = '') => (calibreMm(effect, cal) ?? Infinity) <= PAIR_MAX_MM
+
+/**
+ * 핀들이 치구에서 차지하는 칸 수. 30mm(small) 약은 같은 각도 두 발이 한 칸.
+ * left·right = 그중 줄 끝 칸 전용(30° 미만) 칸.
+ */
+export function cellLoad(cues: { tilts: number[]; small?: boolean }[], pins: Iterable<number>) {
+  let cells = 0
+  let left = 0
+  let right = 0
+  const pairs = new Map<number, number>()
+  for (const i of pins)
+    for (const t of cues[i].tilts) {
+      if (cues[i].small) {
+        const n = (pairs.get(t) ?? 0) + 1
+        pairs.set(t, n)
+        if (n % 2 === 0) continue
+      }
+      cells++
+      if (isLowLeft(t)) left++
+      else if (isLowRight(t)) right++
+    }
+  return { cells, left, right }
+}
 
 /**
  * 치구 칸 각도 표기 (TILT와 같은 바닥 기준, 90 = 수직): ↖-30°, ↑90°, 75°↗.
@@ -89,6 +131,8 @@ export interface JigCue {
   time: string
   tilts: number[]
   estimated: boolean
+  /** 30mm 이하: 같은 각도끼리 한 칸에 두 발 */
+  small: boolean
   /** 새 주소 */
   address: string
 }
@@ -99,6 +143,8 @@ export interface JigSlot {
   /** 직렬 묶음 안에서 몇 번째 발인지 (1부터) */
   shot: number
   tilt: number
+  /** 같은 칸에 함께 꽂는 두 번째 발 (30mm, 같은 각도) */
+  pair?: JigSlot
 }
 
 export interface Jig {
@@ -107,7 +153,7 @@ export interface Jig {
   /** 미리 결선해 가는 모듈 (이 치구에 약이 가장 많은 모듈) */
   home: string[]
   shells: number
-  /** [줄][칸], 빈 칸은 null. 줄마다 왼쪽→오른쪽 각도 오름차순 */
+  /** [줄][칸], 빈 칸은 null. 줄마다 왼쪽→오른쪽 각도 오름차순. 30mm 두 발이 든 칸은 slot.pair */
   grid: (JigSlot | null)[][]
 }
 
@@ -168,19 +214,18 @@ export interface Segmentation {
   jigs: number[][]
 }
 
-/** 핀마다 줄 끝 칸에만 꽂는 약 수 (왼쪽·오른쪽)와 치구 하나의 한쪽 끝 칸 수(= 줄 수) */
-export interface EdgeLimits {
-  left: number[]
-  right: number[]
-  max: number
-}
-
 /**
  * 각도순으로 늘어선 핀들을 모듈·치구로 자른다 (앞에서부터 욕심껏 채우기: 연속 구간 나누기에서는 이게 최소).
- * 직렬 한 묶음(한 핀)은 치구를 나누지 않는다. edges가 있으면 치구마다 끝 칸 전용 약이 한쪽에 max발까지.
+ * 직렬 한 묶음(한 핀)은 치구를 나누지 않는다. jigFits가 있으면 그걸로 치구 하나에 들어가는지 본다
+ * (30mm 짝 칸·끝 칸 수), 없으면 발 수 ≤ capacity.
  */
-export function segment(shells: number[], capacity: number, opts: Pick<JigSettings, 'priority' | 'allowSpan'>, edges?: EdgeLimits): Segmentation {
-  const total = (xs: number[], w = shells) => xs.reduce((a, i) => a + w[i], 0)
+export function segment(
+  shells: number[],
+  capacity: number,
+  opts: Pick<JigSettings, 'priority' | 'allowSpan'>,
+  jigFits?: (pins: number[]) => boolean
+): Segmentation {
+  const total = (xs: number[]) => xs.reduce((a, i) => a + shells[i], 0)
   const chunks = (items: number[], ok: (xs: number[]) => boolean) => {
     const out: number[][] = []
     let cur: number[] = []
@@ -196,7 +241,7 @@ export function segment(shells: number[], capacity: number, opts: Pick<JigSettin
   }
   const all = shells.map((_, i) => i)
   const pinsOk = (xs: number[]) => xs.length <= PINS_PER_MODULE
-  const jigOk = (xs: number[]) => total(xs) <= capacity && (!edges || (total(xs, edges.left) <= edges.max && total(xs, edges.right) <= edges.max))
+  const jigOk = jigFits ?? ((xs: number[]) => total(xs) <= capacity)
   if (opts.allowSpan) {
     // 치구는 20발씩, 모듈은 16핀씩 따로 채운다 → 경계에 걸친 모듈은 현장 결선
     return { modules: chunks(all, pinsOk), jigs: chunks(all, jigOk) }
@@ -226,15 +271,20 @@ export function segment(shells: number[], capacity: number, opts: Pick<JigSettin
  * 30° 미만(줄 끝 칸 전용) 약은 각도순으로 늘어놓으면 앞뒤 치구에 몰리므로, 치구마다 끝 칸 수만큼씩 나눠 끼운 순서도
  * 만들어 보고 모듈·치구가 적은 쪽을 쓴다. order[k] = k번째로 꽂을 핀의 원래(각도순) 인덱스, plan은 order 기준 인덱스.
  */
-export function arrange(cues: { tilts: number[] }[], settings: JigSettings): { order: number[]; plan: Segmentation } {
+export function arrange(cues: { tilts: number[]; small?: boolean }[], settings: JigSettings): { order: number[]; plan: Segmentation } {
   const capacity = settings.rows * settings.cols
   const shells = cues.map((c) => c.tilts.length)
   const left = cues.map((c) => c.tilts.filter(isLowLeft).length)
   const right = cues.map((c) => c.tilts.filter(isLowRight).length)
-  const run = (order: number[]) => {
-    const pick = (w: number[]) => order.map((i) => w[i])
-    return { order, plan: segment(pick(shells), capacity, settings, { left: pick(left), right: pick(right), max: settings.rows }) }
+  /** 원래 인덱스 핀들이 치구 하나에 들어가는지: 칸 수 ≤ capacity, 끝 칸 전용 칸이 한쪽에 줄 수까지 */
+  const fitsJig = (pins: number[]) => {
+    const l = cellLoad(cues, pins)
+    return l.cells <= capacity && l.left <= settings.rows && l.right <= settings.rows
   }
+  const run = (order: number[]) => ({
+    order,
+    plan: segment(order.map((i) => shells[i]), capacity, settings, (xs) => fitsJig(xs.map((k) => order[k])))
+  })
   const sorted = run(cues.map((_, i) => i))
   if (!left.some(Boolean) && !right.some(Boolean)) return sorted
 
@@ -245,18 +295,8 @@ export function arrange(cues: { tilts: number[] }[], settings: JigSettings): { o
   const mixed: number[] = []
   while (leftQ.length || rightQ.length || midQ.length) {
     const jig: number[] = []
-    let n = 0
-    let l = 0
-    let r = 0
-    const fits = (i: number) => n + shells[i] <= capacity && l + left[i] <= settings.rows && r + right[i] <= settings.rows
     for (const q of [leftQ, rightQ, midQ]) {
-      while (q.length && fits(q[0])) {
-        const i = q.shift()!
-        jig.push(i)
-        n += shells[i]
-        l += left[i]
-        r += right[i]
-      }
+      while (q.length && fitsJig([...jig, q[0]])) jig.push(q.shift()!)
     }
     // 한 핀이 치구 하나를 넘으면 그 핀만 따로
     if (!jig.length) jig.push([leftQ, rightQ, midQ].find((q) => q.length)!.shift()!)
@@ -274,9 +314,24 @@ export function arrange(cues: { tilts: number[] }[], settings: JigSettings): { o
  * 줄 안에서는 왼쪽부터 기운 정도(leanOf) 오름차순: 왼쪽 끝이 가장 왼쪽으로, 오른쪽 끝이 가장 오른쪽으로 눕는다.
  * 번갈아 나누면 가장 왼쪽·오른쪽으로 누운 약 줄 수만큼이 줄마다 하나씩 맨 앞·맨 뒤에 온다.
  * 줄이 덜 찼을 때 30° 미만 오른쪽 약은 제일 오른쪽 칸으로 옮긴다.
+ * pairable인 발(30mm)은 같은 각도끼리 두 발씩 한 칸에 넣는다 (앞 발이 칸, 뒷 발이 slot.pair).
  */
-export function placeInGrid(slots: JigSlot[], rows: number, cols: number): (JigSlot | null)[][] {
-  const sorted = [...slots].sort((a, b) => leanOf(a.tilt) - leanOf(b.tilt) || a.cue - b.cue || a.shot - b.shot)
+export function placeInGrid(slots: JigSlot[], rows: number, cols: number, pairable: (s: JigSlot) => boolean = () => false): (JigSlot | null)[][] {
+  const order = (a: JigSlot, b: JigSlot) => leanOf(a.tilt) - leanOf(b.tilt) || a.cue - b.cue || a.shot - b.shot
+  const cells: JigSlot[] = []
+  const waiting = new Map<number, JigSlot>()
+  for (const s of [...slots].sort(order)) {
+    const first = pairable(s) ? waiting.get(s.tilt) : undefined
+    if (first) {
+      first.pair = { ...s }
+      waiting.delete(s.tilt)
+      continue
+    }
+    const cell = { ...s }
+    cells.push(cell)
+    if (pairable(s)) waiting.set(s.tilt, cell)
+  }
+  const sorted = cells.sort(order)
   const perRow = Math.ceil(sorted.length / rows)
   const grid: (JigSlot | null)[][] = Array.from({ length: rows }, () => Array(cols).fill(null))
   const lanes: JigSlot[][] = Array.from({ length: rows }, () => [])
@@ -345,7 +400,8 @@ export function jigModuleNeeds(csv: ParsedCsv, rules: RuleSet, settings: JigSett
     const i = cols.get(k)
     return i === undefined ? '' : (row[i] ?? '').trim()
   }
-  const byPos = new Map<string, { lean: number; tilts: number[] }[]>()
+  const calCol = csv.headers.findIndex((h) => h.trim().toUpperCase() === 'CAL')
+  const byPos = new Map<string, { lean: number; tilts: number[]; small: boolean }[]>()
   for (const r of csv.rows) {
     if (!isJigPosition(rules, get(r, 'POS'))) continue
     const t = findTypeRule(rules.typeRules, get(r, 'TYPE'))
@@ -354,7 +410,7 @@ export function jigModuleNeeds(csv: ParsedCsv, rules: RuleSet, settings: JigSett
     const tilts = parseTilts(get(r, 'TILT'), qty).tilts
     const key = `${get(r, 'CONTROL')}\u0000${get(r, 'POS')}`
     if (!byPos.has(key)) byPos.set(key, [])
-    byPos.get(key)!.push({ lean: mean(tilts.map(leanOf)), tilts })
+    byPos.get(key)!.push({ lean: mean(tilts.map(leanOf)), tilts, small: isPairable(get(r, 'EFFECT'), r[calCol] ?? '') })
   }
   const needs = new Map<string, number>()
   for (const [key, cues] of byPos) {
@@ -404,7 +460,9 @@ export function planJigs(
     return { csv, positions: [], issues, blocked: true }
   }
   const addrCol = cols.get('ADDR')
-  const time = (r: string[]) => (['HH', 'MM', 'SS', 'FF'] as const).map((k) => get(r, k).padStart(2, '0')).join(':')
+  /** 구경. 엔진 표준 컬럼이 아니라 이름으로 찾는다 */
+  const calCol = csv.headers.findIndex((h) => h.trim().toUpperCase() === 'CAL')
+  const time =(r: string[]) => (['HH', 'MM', 'SS', 'FF'] as const).map((k) => get(r, k).padStart(2, '0')).join(':')
   const isTarget = (r: string[]) => {
     if (!isJigPosition(rules, get(r, 'POS'))) return false
     // 같은 위치에 놓인 cake(연발)·타상은 치구에 꽂지 않는다
@@ -446,14 +504,15 @@ export function planJigs(
         if (t.estimated) warn('JIG_TILT_ESTIMATED', 'warning', '직렬 각도가 엑셀에서 계산된 값으로 보입니다 (예: -40-40 → -80). 평균값으로 추정해 배치했습니다. 원본 CSV를 쓰면 정확합니다.', [`${line}행 ${label}: TILT=${get(rows[i], 'TILT')}, QTY=${qty}`])
         const low = t.tilts.filter((x) => Math.abs(x) < MIN_TILT)
         if (low.length && !t.estimated) warn('JIG_TILT_LOW', 'info', `바닥 기준 ${MIN_TILT}°보다 더 눕힌 약은 치구 줄의 제일 왼쪽·오른쪽 칸에만 꽂았습니다 (가운데 칸은 ${MIN_TILT}°까지).`, [`${line}행 ${label}: ${low.join(', ')}°`])
-        return { rowIndex: i, line, effect: get(rows[i], 'EFFECT'), time: time(rows[i]), tilts: t.tilts, estimated: t.estimated, address: '' }
+        const effect = get(rows[i], 'EFFECT')
+        return { rowIndex: i, line, effect, time: time(rows[i]), tilts: t.tilts, estimated: t.estimated, small: isPairable(effect, rows[i][calCol] ?? ''), address: '' }
       })
       const lean = (c: JigCue) => mean(c.tilts.map(leanOf))
       cues.sort((a, b) => lean(a) - lean(b) || naturalCompare(a.effect, b.effect) || naturalCompare(a.time, b.time) || a.rowIndex - b.rowIndex)
       const arranged = arrange(cues, settings)
       cues.splice(0, cues.length, ...arranged.order.map((k) => cues[k]))
       const shells = cues.map((c) => c.tilts.length)
-      const over = cues.filter((c) => c.tilts.length > capacity)
+      const over = cues.filter((_, ci) => cellLoad(cues, [ci]).cells > capacity)
       if (over.length) warn('JIG_CUE_TOO_BIG', 'warning', `한 핀에 치구 한 개(${capacity}칸)보다 많은 약이 직렬로 걸려 있습니다. 치구 하나를 따로 씁니다.`, over.map((c) => `${c.line}행 ${label}: ${c.tilts.length}발`))
 
       const plan = arranged.plan
@@ -523,11 +582,12 @@ export function planJigs(
       const jigs: Jig[] = plan.jigs.map((cueList, j) => {
         const slots = cueList.flatMap((ci) => cues[ci].tilts.map((tilt, k) => ({ cue: ci, shot: k + 1, tilt })))
         const names = [...new Set(cueList.map((ci) => moduleOfCue[ci]))]
+        const width = Math.max(settings.cols, Math.ceil(cellLoad(cues, cueList).cells / settings.rows))
         return {
           modules: names,
           home: names.filter((m) => homeOf.get(m) === j),
           shells: slots.length,
-          grid: placeInGrid(slots, settings.rows, Math.max(settings.cols, Math.ceil(slots.length / settings.rows)))
+          grid: placeInGrid(slots, settings.rows, width, (s) => cues[s.cue].small)
         }
       })
       jigs.forEach((jig, j) => {
@@ -536,13 +596,9 @@ export function planJigs(
       })
 
       const totalShells = shells.reduce((a, b) => a + b, 0)
-      const allTilts = cues.flatMap((c) => c.tilts)
-      // 끝 칸 전용 약은 치구 하나에 한쪽 줄 수만큼
-      const minJigs = Math.max(
-        Math.ceil(totalShells / capacity),
-        Math.ceil(allTilts.filter(isLowLeft).length / settings.rows),
-        Math.ceil(allTilts.filter(isLowRight).length / settings.rows)
-      )
+      // 칸 수 기준 (30mm 짝 칸 포함). 끝 칸 전용 칸은 치구 하나에 한쪽 줄 수만큼
+      const load = cellLoad(cues, cues.keys())
+      const minJigs = Math.max(Math.ceil(load.cells / capacity), Math.ceil(load.left / settings.rows), Math.ceil(load.right / settings.rows))
       positions.push({
         control,
         pos,
@@ -552,7 +608,7 @@ export function planJigs(
         modules,
         jigs,
         lowerBound: {
-          modules: Math.max(Math.ceil(cues.length / PINS_PER_MODULE), settings.allowSpan ? Math.ceil(totalShells / capacity) : minJigs),
+          modules: Math.max(Math.ceil(cues.length / PINS_PER_MODULE), settings.allowSpan ? Math.ceil(load.cells / capacity) : minJigs),
           jigs: minJigs
         },
         previousModules: previous.size,

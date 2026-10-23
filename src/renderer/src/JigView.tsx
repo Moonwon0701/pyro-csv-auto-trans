@@ -341,7 +341,7 @@ function PositionFan({ position: p, selected, onSelect }: { position: JigPositio
   // 치구마다 튜브 끝이 옆으로 뻗는 범위까지 한 덩어리로 보고, 덩어리끼리 겹치지 않게 늘어놓는다
   let cursor = FAN.pad
   const groups = p.jigs.map((jig, j) => {
-    const shots = jig.grid.flat().filter((s): s is NonNullable<typeof s> => !!s)
+    const shots = jig.grid.flat().flatMap((s) => (s ? (s.pair ? [s, s.pair] : [s]) : []))
     shots.sort((a, b) => leanOf(a.tilt) - leanOf(b.tilt))
     const tips = shots.map((s) => FAN.length * Math.sin((leanOf(s.tilt) * Math.PI) / 180))
     const minX = Math.min(0, ...tips.map((dx, i) => i * FAN.step + dx))
@@ -423,20 +423,28 @@ function JigTable({ position: p, jig, index }: { position: JigPosition; jig: Jig
               <th>{r + 1}줄</th>
               {lane.map((slot, c) => {
                 if (!slot) return <td key={c} className="empty" />
-                const cue = p.cues[slot.cue]
+                // 30mm 같은 각도 두 발이 한 칸
+                const shots = slot.pair ? [slot, slot.pair] : [slot]
+                const cues = shots.map((s) => p.cues[s.cue])
+                const estimated = cues.some((x) => x.estimated)
                 return (
                   <td
                     key={c}
-                    className={`${field.has(slot.cue) ? 'field' : ''} ${cue.estimated ? 'estimated' : ''}`}
-                    title={`${cue.effect}\n${cue.time} · TILT ${slot.tilt}${cue.tilts.length > 1 ? `\n직렬 ${slot.shot}/${cue.tilts.length}발 (같은 핀)` : ''}`}
+                    className={`${shots.some((s) => field.has(s.cue)) ? 'field' : ''} ${estimated ? 'estimated' : ''}`}
+                    title={shots
+                      .map((s, k) => `${cues[k].effect}\n${cues[k].time} · TILT ${s.tilt}${cues[k].tilts.length > 1 ? `\n직렬 ${s.shot}/${cues[k].tilts.length}발 (같은 핀)` : ''}`)
+                      .join('\n\n')}
                   >
-                    <div className="addr mono">
-                      {cue.address}
-                      {cue.tilts.length > 1 && <span className="series"> 직렬{slot.shot}</span>}
-                    </div>
+                    {shots.map((s, k) => (
+                      <div key={k} className="addr mono">
+                        {cues[k].address}
+                        {cues[k].tilts.length > 1 && <span className="series"> 직렬{s.shot}</span>}
+                      </div>
+                    ))}
                     <div className="lean">
                       {tiltLabel(slot.tilt)}
-                      {cue.estimated ? '?' : ''}
+                      {estimated ? '?' : ''}
+                      {slot.pair ? ' ×2' : ''}
                     </div>
                   </td>
                 )

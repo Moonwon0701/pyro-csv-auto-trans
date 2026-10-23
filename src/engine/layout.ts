@@ -407,9 +407,14 @@ export function jigSheet(positions: JigPosition[], cols: number): GridSheet {
         put(row + 2 + r, col, `${r + 1}줄`, 'note')
         lane.forEach((slot, c) => {
           if (!slot) return
-          const cue = p.cues[slot.cue]
-          const shot = cue.tilts.length > 1 ? ` (직렬 ${slot.shot}/${cue.tilts.length})` : ''
-          put(row + 2 + r, col + 1 + c, `${cue.address}${shot}\n${tiltLabel(slot.tilt)}${cue.estimated ? '?' : ''}\n${cue.effect}`, field.has(slot.cue) ? 'slot-field' : cue.estimated ? 'slot-estimated' : 'slot')
+          // 30mm 두 발이 한 칸이면 주소를 " + "로 잇는다
+          const shots = slot.pair ? [slot, slot.pair] : [slot]
+          const cues = shots.map((s) => p.cues[s.cue])
+          const addrs = shots.map((s, k) => `${cues[k].address}${cues[k].tilts.length > 1 ? ` (직렬 ${s.shot}/${cues[k].tilts.length})` : ''}`).join(' + ')
+          const effects = [...new Set(cues.map((x) => x.effect))].join(' / ')
+          const estimated = cues.some((x) => x.estimated)
+          const style = shots.some((s) => field.has(s.cue)) ? 'slot-field' : estimated ? 'slot-estimated' : 'slot'
+          put(row + 2 + r, col + 1 + c, `${addrs}\n${tiltLabel(slot.tilt)}${estimated ? '?' : ''}${slot.pair ? ' ×2' : ''}\n${effects}`, style)
         })
       })
       col += width + 2

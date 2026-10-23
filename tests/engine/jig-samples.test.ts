@@ -2,11 +2,11 @@
  * 사람이 주소를 매긴 과거 쇼로 치구 배치를 검증한다 (samples/는 git 제외, 없으면 건너뜀).
  * - 치구 대상 위치의 모듈 수가 사람이 쓴 것보다 많지 않을 것
  * - 기본 설정에서는 현장 결선이 없을 것 (모듈이 치구 두 개에 걸치지 않음)
- * - 모듈 16핀·20발, 치구 20칸 이하, 주소는 Control 안에서 겹치지 않을 것
+ * - 모듈 16핀·20칸, 치구 20칸 이하 (30mm는 같은 각도 두 발이 한 칸), 주소는 Control 안에서 겹치지 않을 것
  */
 import { existsSync, readFileSync } from 'fs'
 import { describe, expect, it } from 'vitest'
-import { addressToIndex, DEFAULT_JIG_SETTINGS, parseCsv, planJigs, type RuleSet } from '../../src/engine'
+import { addressToIndex, cellLoad, DEFAULT_JIG_SETTINGS, parseCsv, planJigs, type RuleSet } from '../../src/engine'
 
 const S = 'samples/sets/시트정리 공유'
 const D = 'samples/data'
@@ -42,11 +42,14 @@ describe.skipIf(CASES.length === 0)('치구 배치: 과거 쇼와 비교', () =>
       for (const p of r.positions) {
         expect(p.modules.length, `${p.pos} 모듈 수`).toBeLessThanOrEqual(p.previousModules + (overfull(p) ? 1 : 0))
         expect(p.fieldWiring, `${p.pos} 현장 결선`).toEqual([])
+        // 모듈은 각도순으로 이어진 핀 구간
+        let start = 0
         for (const m of p.modules) {
           expect(m.pins).toBeLessThanOrEqual(16)
-          expect(m.shells).toBeLessThanOrEqual(capacity)
+          expect(cellLoad(p.cues, Array.from({ length: m.pins }, (_, k) => start + k)).cells).toBeLessThanOrEqual(capacity)
+          start += m.pins
         }
-        for (const j of p.jigs) expect(j.shells).toBeLessThanOrEqual(capacity)
+        for (const j of p.jigs) expect(j.grid.flat().filter(Boolean).length).toBeLessThanOrEqual(capacity)
         totals.before += p.previousModules
         totals.after += p.modules.length
         totals.jigs += p.jigs.length
