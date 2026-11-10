@@ -38,8 +38,13 @@ describe('라벨 시트', () => {
     expect(r.issues).toEqual([])
   })
 
-  it('타상: 직렬은 2직, 체인은 간격 초', () => {
-    expect(pick(sheet('타상'), 'ADDR', 'Effect Description')).toEqual(['300|3 peony', '301|3 peony 2직', '36F|3 purple 3초 체인'])
+  it('타상: N직은 보라색 칸 열로, 체인은 제품명 칸에 간격 초', () => {
+    expect(pick(sheet('타상'), 'ADDR', 'Effect Description', 'Effect Serial')).toEqual(['300|3 peony|', '301||3 peony 2직', '36F|3 purple 3초 체인|'])
+  })
+
+  it('타상: 체인인데 DUR가 없어 N직으로 찍히면 보라색 칸', () => {
+    const noDur = buildLabelSheets(csvOf(SAMPLE.replace('3P-03,5,shell,1200', '3P-03,5,shell,')), RULES).sheets.find((s) => s.name === '타상')!
+    expect(pick(noDur, 'ADDR', 'Effect Description', 'Effect Serial')).toContain('36F||3 purple 5직')
   })
 
   it('연발: 직렬 캔들을 펼치고, 수직 한 발 케이크는 비우고, R은 START_R', () => {
@@ -111,7 +116,7 @@ describe.skipIf(!existsSync(U_CSV) || !existsSync(U_XLSX))('울주 라벨작업 
       const humanOnly = [...expected].filter(([k, n]) => (actual.get(k) ?? 0) !== n).map(([k]) => k)
       expect(humanOnly).toEqual(name === '연발' ? ['C-01|19shot crown jewels|-15|||1', 'C-05|19shot crown jewels|||15|1'] : [])
       // 타상 붙임말 (2직, 3초 체인)
-      if (name === '타상') expect(asObj.map((o) => o['Effect Description']).sort()).toEqual(human.map((o) => o['Effect Description']).sort())
+      if (name === '타상') expect(asObj.map((o) => o['Effect Serial'] || o['Effect Description']).sort()).toEqual(human.map((o) => o['Effect Description']).sort())
       // 단발: 주소 3자리
       if (name === '단발') expect(asObj.filter(single).map((o) => o.ADDR).sort()).toEqual(human.filter(single).map((o) => o.ADDR).sort())
     })

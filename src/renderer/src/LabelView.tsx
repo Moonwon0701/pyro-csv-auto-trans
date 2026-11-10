@@ -190,8 +190,8 @@ export default function LabelView({ active, incoming, presetResolutions, rulesRe
                 </tbody>
               </table>
               <p className="hint" style={{ marginBottom: 0 }}>
-                직렬(한 핀에 여러 발)은 발마다 라벨 한 장. 각도는 왼쪽(−)=CUSTOM1, 수직(90)=CUSTOM2, 오른쪽(+)=CUSTOM3. 타상 직렬은 제품명 뒤에 “2직”, 체인은
-                “3초 체인”.
+                직렬(한 핀에 여러 발)은 발마다 라벨 한 장. 각도는 왼쪽(−)=CUSTOM1, 수직(90)=CUSTOM2, 오른쪽(+)=CUSTOM3. 타상 직렬은 제품명 뒤에 “2직”을 붙여 보라색으로
+                찍고, 체인은 “3초 체인”(색은 그대로).
               </p>
             </div>
           )}
@@ -211,7 +211,7 @@ export default function LabelView({ active, incoming, presetResolutions, rulesRe
           <div className="card">
             <h3>인쇄</h3>
             <p className="hint" style={{ margin: 0 }}>
-              만든 <b>.dgz</b>를 더블클릭하면 폼텍 DesignPro 9가 라벨 디자인(3100 라벨지)과 라벨작업 엑셀을 함께 엽니다. 디자인은 울주 라벨과 같습니다.
+              만든 <b>.dgz</b>를 더블클릭하면 폼텍 DesignPro 9가 라벨 디자인(3100 라벨지)과 라벨작업 엑셀을 함께 엽니다. 디자인은 울주 라벨과 같고, 타상 “N직” 글자만 보라색입니다.
             </p>
           </div>
         </div>

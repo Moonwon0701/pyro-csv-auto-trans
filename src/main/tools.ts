@@ -10,6 +10,7 @@ import {
   buildXlsx,
   CATEGORIES,
   damagedSeriesLines,
+  LABEL_SERIAL_EFFECT_OVERLAY,
   parseCsv,
   restoreCsv,
   safeFilePart,
@@ -218,7 +219,8 @@ export function registerToolIpc(deps: {
         dgzBase,
         template: readFileSync(join(templateDir(), `${c}.dgf`)),
         documentsDir: documentsDir(),
-        showName: showName.trim() || show
+        showName: showName.trim() || show,
+        overlay: c === '타상' ? LABEL_SERIAL_EFFECT_OVERLAY : undefined
       })
       const out = join(dir, `${dgzBase}.dgz`)
       writeFileSync(out, dgz)

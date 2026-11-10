@@ -3,11 +3,13 @@
  * 울주 라벨작업(2026-07)을 CSV와 대조해 정한 규칙:
  * - 시트: 원본 전체 → 타상 → 연발 → 단발. 열은 CSV 그대로 (라벨이 Effect Description·POS·ADDR·CUSTOM1~3·QTY를 쓴다)
  * - 타상: 한 행 = 라벨 한 장. QTY 2면 Effect 뒤에 " 2직", chain이면 " 3초 체인"(DUR ÷ 간격 수)
+ *   "N직" 라벨은 제품명을 Effect Serial 열에만 적는다. 색은 칸마다 고정이라 같은 자리의 보라색 칸이 이 열을 읽는다
  * - 연발·단발: 직렬(QTY>1)은 발마다 한 행으로 펼친다. 각도는 TILT 그대로 왼쪽(음수)=CUSTOM1, 수직(90)=CUSTOM2, 오른쪽(양수)=CUSTOM3
  *   연발은 한 발짜리 수직 케이크에는 각도를 적지 않고, Event가 R이면 CUSTOM2에 (START_R)
  * - ADDR은 3자리 (엑셀에서 잘린 "30" → "030")
  */
 import { normalizeHeader } from './columns'
+import type { OverlayField } from './dgz'
 import { parseTilts, VERTICAL } from './jig'
 import { repairAddress } from './restore'
 import { resolveCategory } from './rules'
@@ -16,6 +18,13 @@ import { CATEGORIES, EXCLUDE, type Category, type Issue, type ParsedCsv, type Re
 
 export const LABEL_ANGLE_COLUMNS = ['CUSTOM1', 'CUSTOM2', 'CUSTOM3'] as const
 export const START_R_TEXT = '(START_R)'
+export const LABEL_SERIAL_EFFECT_COLUMN = 'Effect Serial'
+/** 타상 "N직" 제품명 칸. 연발·단발의 빨강(왼쪽)·파랑(오른쪽) 각도 칸과 겹치지 않게 보라색 */
+export const LABEL_SERIAL_EFFECT_OVERLAY: OverlayField = {
+  source: 'Effect Description',
+  field: LABEL_SERIAL_EFFECT_COLUMN,
+  rgb: [0x70, 0x30, 0xa0]
+}
 
 export interface LabelCount {
   category: Category
@@ -54,13 +63,15 @@ function chainSeconds(dur: string, qty: number): string | null {
 export function buildLabelSheets(csv: ParsedCsv, rules: RuleSet, resolutions: Record<string, Resolution> = {}): LabelResult {
   const find = (name: string) => csv.headers.findIndex((h) => normalizeHeader(h) === name)
   const headers = [...csv.headers]
-  const angleCols = LABEL_ANGLE_COLUMNS.map((c) => {
-    const i = find(c)
+  const ensureColumn = (c: string) => {
+    const i = find(normalizeHeader(c))
     if (i >= 0) return i
     headers.push(c)
     return headers.length - 1
-  })
+  }
+  const angleCols = LABEL_ANGLE_COLUMNS.map(ensureColumn)
   const [c1, c2, c3] = angleCols
+  const serialEffectCol = ensureColumn(LABEL_SERIAL_EFFECT_COLUMN)
   const col = {
     pos: find('POS'),
     type: find('TYPE'),
@@ -96,9 +107,15 @@ export function buildLabelSheets(csv: ParsedCsv, rules: RuleSet, resolutions: Re
     const list = byCategory.get(category)!
 
     if (category === '타상') {
+      base[serialEffectCol] = ''
       if (qty > 1 && col.effect >= 0) {
         const chain = /chain/i.test(get(row, col.event)) ? chainSeconds(get(row, col.dur), qty) : null
-        base[col.effect] = `${base[col.effect]} ${chain ? `${chain}초 체인` : `${qty}직`}`
+        if (chain) {
+          base[col.effect] = `${base[col.effect]} ${chain}초 체인`
+        } else {
+          base[serialEffectCol] = `${base[col.effect]} ${qty}직`
+          base[col.effect] = ''
+        }
       }
       list.push({ cells: base, effect, addr, angle: [2, 0], order: list.length })
       return

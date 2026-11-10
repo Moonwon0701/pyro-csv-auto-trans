@@ -10,7 +10,7 @@
  *   엑셀 경로 (CP949): <문서>\Formtec\DesignPro9\Temp\<dgz 이름>\Data\<엑셀 이름>_FD01.XLSX — DesignPro가 패키지를 푸는 곳
  *   고정 문구 (UTF-16LE, 길이는 글자 수): 라벨에 찍히는 행사명
  *   끝부분 "65,NNNN/": NNNN = 파일 크기 - 325 (샘플 3개 모두)
- * 디자인(칸 위치·글꼴·연결 시트)은 템플릿 그대로 두고 이 세 가지만 바꾼다.
+ * 디자인(칸 위치·글꼴·연결 시트)은 템플릿 그대로 두고 이 세 가지만 바꾼다. 타상은 "N직"용 보라색 칸만 더한다.
  */
 import iconv from 'iconv-lite'
 import JSZip from 'jszip'
@@ -108,11 +108,54 @@ export function readDgf(dgf: Uint8Array): DgfInfo {
   }
 }
 
+/** 어떤 칸과 같은 자리에 색만 다른 칸을 겹친다. 행마다 둘 중 한 열만 채우면 행별로 색이 달라진다 (각도 CUSTOM1~3과 같은 방식) */
+export interface OverlayField {
+  /** 복사할 칸의 필드명 */
+  source: string
+  /** 새 칸이 읽을 엑셀 열 */
+  field: string
+  rgb: readonly [number, number, number]
+}
+
+/**
+ * 필드 칸 레코드 (울주 템플릿 3종에서 확인):
+ *   종류 1 + 위치·크기 등 74바이트, 필드명(4+UTF-16), 고정 24바이트, 글꼴(4+CP949), 크기 4, 글자색 RGB0 4, 굵게 등 2
+ */
+const FIELD_TYPE = 0x06
+const FIELD_HEAD = 75
+const FIELD_AFTER_NAME = 24
+
+function overlayRecord(b: Uint8Array, overlay: OverlayField): { at: number; bytes: Uint8Array } {
+  const name = findStaticTexts(b, overlay.source)[0]
+  if (!name) throw new Error(`라벨 디자인에서 ${overlay.source} 칸을 찾지 못했습니다.`)
+  const start = name.start - FIELD_HEAD
+  const fontLength = u32(b, name.end + FIELD_AFTER_NAME)
+  const colorAt = name.end + FIELD_AFTER_NAME + 4 + fontLength + 4
+  const end = colorAt + 6
+  if (start < 0 || b[start] !== FIELD_TYPE || fontLength < 1 || fontLength > 64 || end > b.length) {
+    throw new Error('라벨 디자인의 칸 형식을 알 수 없습니다.')
+  }
+  const color = new Uint8Array([...overlay.rgb, 0])
+  return {
+    at: end,
+    bytes: new Uint8Array([
+      ...b.subarray(start, name.start),
+      ...lengthBytes(overlay.field.length),
+      ...utf16(overlay.field),
+      ...b.subarray(name.end, colorAt),
+      ...color,
+      ...b.subarray(colorAt + color.length, end)
+    ])
+  }
+}
+
 export interface PatchOptions {
   dataPath: string
   /** 라벨에 찍히는 행사명. 템플릿에 templateShowName 문구가 없으면 무시 */
   showName?: string
   templateShowName?: string
+  /** 템플릿에 overlay.field 칸이 이미 있으면 그대로 둔다 */
+  overlay?: OverlayField
 }
 
 /** 템플릿 dgf의 엑셀 경로·행사명을 바꾸고 끝부분 크기 값을 맞춘다 */
@@ -127,6 +170,10 @@ export function patchDgf(template: Uint8Array, opts: PatchOptions): Uint8Array {
     for (const span of findStaticTexts(template, from)) {
       edits.push({ span, bytes: new Uint8Array([...lengthBytes(opts.showName.length), ...utf16(opts.showName)]) })
     }
+  }
+  if (opts.overlay && findStaticTexts(template, opts.overlay.field).length === 0) {
+    const { at, bytes } = overlayRecord(template, opts.overlay)
+    edits.push({ span: { start: at, end: at }, bytes })
   }
   const delta = edits.reduce((s, e) => s + e.bytes.length - (e.span.end - e.span.start), 0)
   const trailer = findTrailer(template)
@@ -167,6 +214,7 @@ export interface DgzOptions {
   /** Windows 문서 폴더 (DesignPro가 패키지를 그 아래 Temp에 푼다) */
   documentsDir: string
   showName?: string
+  overlay?: OverlayField
   date?: Date
 }
 
@@ -178,7 +226,8 @@ export function dgzDataPath(documentsDir: string, dgzBase: string, xlsxBase: str
 export async function buildDgz(opts: DgzOptions): Promise<Uint8Array> {
   const dgf = patchDgf(opts.template, {
     dataPath: dgzDataPath(opts.documentsDir, opts.dgzBase, opts.xlsxBase),
-    showName: opts.showName
+    showName: opts.showName,
+    overlay: opts.overlay
   })
   const zip = new JSZip()
   // zip 시각은 시간대 없는 현지 시각이다. JSZip은 UTC로 적으므로 미리 당겨 둔다

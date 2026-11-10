@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'fs'
 import JSZip from 'jszip'
 import { describe, expect, it } from 'vitest'
-import { buildDgz, dgzDataPath, patchDgf, readDgf, TEMPLATE_SHOW_NAME } from '../../src/engine'
+import { buildDgz, dgzDataPath, LABEL_SERIAL_EFFECT_OVERLAY, patchDgf, readDgf, TEMPLATE_SHOW_NAME } from '../../src/engine'
 
 const TEMPLATES = ['타상', '연발', '단발'] as const
 const template = (c: string) => new Uint8Array(readFileSync(`resources/label-templates/${c}.dgf`))
@@ -30,6 +30,48 @@ describe('라벨 디자인 템플릿 (.dgf)', () => {
     const text = Buffer.from(out).toString('utf16le')
     expect(text.includes('부산불꽃축제')).toBe(true)
     expect(text.includes(TEMPLATE_SHOW_NAME)).toBe(false)
+  })
+})
+
+describe('겹친 색 칸', () => {
+  const dataPath = dgzDataPath('C:/Users/User/Documents', '울주 타상', '울주 라벨작업')
+  const plain = patchDgf(template('타상'), { dataPath, showName: '울주' })
+  const out = patchDgf(template('타상'), { dataPath, showName: '울주', overlay: LABEL_SERIAL_EFFECT_OVERLAY })
+  const utf16Named = (name: string) => Buffer.concat([Buffer.from([name.length, 0, 0, 0]), Buffer.from(name, 'utf16le')])
+  const FONT = Buffer.from('b8bcc0ba20b0edb5f1', 'hex')
+
+  it('제품명 칸 바로 뒤에 같은 자리·글꼴로 들어가고 나머지 바이트는 그대로다', () => {
+    const buf = Buffer.from(out)
+    const base = Buffer.from(plain)
+    const firstAt = base.indexOf(utf16Named('Effect Description'))
+    const insertAt = base.indexOf(FONT, firstAt) + FONT.length + 10
+    const size = out.length - plain.length
+    // 기존 칸 162바이트에서 필드명만 "Effect Description"(18자) → "Effect Serial"(13자)
+    expect(size).toBe(162 - 2 * (18 - 13))
+    expect(buf.subarray(0, insertAt)).toEqual(base.subarray(0, insertAt))
+    // 위치·크기까지 복사
+    expect(buf.subarray(insertAt, insertAt + 75)).toEqual(base.subarray(firstAt - 75, firstAt))
+    expect(buf.indexOf(utf16Named('Effect Serial'))).toBe(insertAt + 75)
+    // 글자색은 새 칸만 보라색
+    const newFont = buf.indexOf(FONT, insertAt)
+    expect([...buf.subarray(newFont + FONT.length + 4, newFont + FONT.length + 8)]).toEqual([0x70, 0x30, 0xa0, 0])
+    expect([...base.subarray(insertAt - 6, insertAt - 2)]).toEqual([0, 0, 0, 0])
+    // 뒤쪽은 끝부분 크기 값만 다르다
+    const trailer = out.length - plain.length
+    const tailAfter = Buffer.from(buf.subarray(insertAt + size)).toString('latin1').replace(/\d+,\d+\/\s*$/, '')
+    const tailBefore = Buffer.from(base.subarray(insertAt)).toString('latin1').replace(/\d+,\d+\/\s*$/, '')
+    expect(tailAfter).toBe(tailBefore)
+    expect(trailer).toBeGreaterThan(0)
+  })
+
+  it('끝부분 크기와 시트 연결이 맞다', () => {
+    const info = readDgf(out)
+    expect(info.sheet).toBe('[타상$]')
+    expect(info.trailer).toBe(out.length - 325)
+  })
+
+  it('이미 그 칸이 있는 템플릿은 다시 넣지 않는다', () => {
+    expect(patchDgf(out, { dataPath, showName: '울주', overlay: LABEL_SERIAL_EFFECT_OVERLAY, templateShowName: '울주' })).toEqual(out)
   })
 })
 
